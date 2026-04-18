@@ -3,7 +3,312 @@ guid: dbe0c807140d14ae5b7a6c65c38893ac
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Battiscopa
+    second: {fileID: 2100000, guid: f6d8b20932c9b42febcd3a0ab60b76cd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Default_Material
+    second: {fileID: 2100000, guid: 1cbc33e616ea849f9b71ae1c2d76cf0d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: TV
+    second: {fileID: 2100000, guid: ea9d7befd329f43918bb9ffffe1f45d4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: anelli_doccia
+    second: {fileID: 2100000, guid: fbba2d280cd1441999d03ab477a390d3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ante
+    second: {fileID: 2100000, guid: 161378480dbc74235be02c1f41b71f37, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: armadio_a_muro
+    second: {fileID: 2100000, guid: 8b111f36bc0694ae58fe185744108b9b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: asta
+    second: {fileID: 2100000, guid: 3ae30cd66e4f5447e8ae6b5f543b217b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: bastone_doccia
+    second: {fileID: 2100000, guid: 34a36a14decb248dba4dae65ffb9f4a1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: bicchieri
+    second: {fileID: 2100000, guid: 6a81864f7356f476ebff8dfdb4812f0a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: comodino1
+    second: {fileID: 2100000, guid: 7a73ec96faa8144f8b9bbbde20d9c74c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: coperta
+    second: {fileID: 2100000, guid: 7775a6307c31744acb19d37db0335d3f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: corrimano
+    second: {fileID: 2100000, guid: adbd7553354094576af3ba3f65e84ad5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: cuscini
+    second: {fileID: 2100000, guid: d5d6134e449ad4573bb9fd5dbd802ec2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: cuscino
+    second: {fileID: 2100000, guid: 3c648efe296944de5b9efce6801cfdd6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: divano_e_poltrone
+    second: {fileID: 2100000, guid: 5289c08296c5c416087aa0d5ebc7294b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: fornelli1
+    second: {fileID: 2100000, guid: a51cd9659fece481caae3645693df31e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: fornelli_piano
+    second: {fileID: 2100000, guid: ef22f563e080c4648b53bbeefc2ad495, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: fornelli_sostegni
+    second: {fileID: 2100000, guid: 908514d2e56ec4a49bbf94f3fe9d19b1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: forno
+    second: {fileID: 2100000, guid: 8738db430a351493cb3306e172a17985, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: forno2
+    second: {fileID: 2100000, guid: 1185229fc893643ada36cb8e56bfe2b0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: forno3
+    second: {fileID: 2100000, guid: 1f7510b8b78384616a576bc1fcd8dbd6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: forno4
+    second: {fileID: 2100000, guid: 1e004b3dcdb494a4d83cbbc11717341b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: frigo
+    second: {fileID: 2100000, guid: f67e6bc96bef84033a07b946f18ff5ae, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: gradini
+    second: {fileID: 2100000, guid: 23c5d0a917cee4fd59210a8b8d21da78, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: lambert1
+    second: {fileID: 2100000, guid: 1c05995309f00499eb3a0330bd89c88d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: lampada_metallo
+    second: {fileID: 2100000, guid: 4fd134cb10f53490c8615157105f7d82, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: lampada_stoffa
+    second: {fileID: 2100000, guid: 6b4e3b01b88ea420ab7aa494b2f4ed16, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: letto1
+    second: {fileID: 2100000, guid: b46b1ff7ae732418ea0f9cf9cb016b69, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: materasso
+    second: {fileID: 2100000, guid: 494b3e7815e074c66bfdc6bfc3fbf71b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobiletto
+    second: {fileID: 2100000, guid: f8eb4cc7ccd0540cc9d4d30b8f81b0e7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_cucina
+    second: {fileID: 2100000, guid: bae293f670bb84a5cb20400bf450b47d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_lampada_filo
+    second: {fileID: 2100000, guid: 3fb6ec94323054b6f84d1cf83e0fc840, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_lampada_lampadina
+    second: {fileID: 2100000, guid: 4603d141de53c42a9a4627fc4a885ebf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_lampada_plafoniera
+    second: {fileID: 2100000, guid: 70fc0602884364297b09258c7ecda787, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_libreria
+    second: {fileID: 2100000, guid: a7ae217947ff74962bce5fe56365d34b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_cassetti
+    second: {fileID: 2100000, guid: 0c05eba52ce13454fa1ae5a7f73b2faf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_libro1
+    second: {fileID: 2100000, guid: 1b0e69e3ab3e241ea9cfd71d9c413643, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_libro2
+    second: {fileID: 2100000, guid: 3db178512224a4e7ba24f9fcb32d5e00, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_maniglie
+    second: {fileID: 2100000, guid: 6a81970a9d7a7491281918c73ee4dfcb, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_pareti
+    second: {fileID: 2100000, guid: a45802d2bf34b4257a7c556e9ffc373b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_piano
+    second: {fileID: 2100000, guid: 04a02a9019e954cedb8c5072fd8aefbd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_portapenne
+    second: {fileID: 2100000, guid: 0d2cd0865bbf5427fa780c10e7a464d4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_scrivania_zampe
+    second: {fileID: 2100000, guid: 686477b4835c84216ac263873aaa05da, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mobili_esportati_termosifone
+    second: {fileID: 2100000, guid: bc6fa84d22cbf491a859d8c61e707f06, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pareti_casa
+    second: {fileID: 2100000, guid: 2cd1118e82bd84e9da983a35e5d98cf4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pavimento_piano_terra
+    second: {fileID: 2100000, guid: efbd68872031f41a789f8271b97f73b7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pavimento_primo_piano
+    second: {fileID: 2100000, guid: ccd452af08ee84b4889acd98454d4499, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pomelli
+    second: {fileID: 2100000, guid: cb993ae6a1a0b4d5d852e08e2c4be33c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: pomelli1
+    second: {fileID: 2100000, guid: 43988de2a849e49dc96685525a416b9d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: porte_legno
+    second: {fileID: 2100000, guid: 19880f35ef4644b52883c4b64b72385b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: porte_maniglie
+    second: {fileID: 2100000, guid: d48b3231acba243eab77f79b5af245cb, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: sanitari_ceramica
+    second: {fileID: 2100000, guid: 4ac5629bd2aaf4f1caef3faed16f9951, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: sanitari_metallo
+    second: {fileID: 2100000, guid: cbc026c6fd5c4446282342bb7942d2d1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: sedie_metallo
+    second: {fileID: 2100000, guid: 1287458768c164132a5ead9f78bbf2f9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: sedie_piano
+    second: {fileID: 2100000, guid: 50a88e6e1c059473d8db822cd9c8fd17, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tappeto
+    second: {fileID: 2100000, guid: e7990d1b0998d4b889cd93f097b6233b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tavolino_legno
+    second: {fileID: 2100000, guid: e44fcb38c6865402286e64c8e683a369, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tavolino_metallo
+    second: {fileID: 2100000, guid: 8d87c03a67d254e0590d367c94d9fad7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tavolo
+    second: {fileID: 2100000, guid: c34667f3bbc0549bf86839684d470da0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tenda_doccia
+    second: {fileID: 2100000, guid: a586efdd029e34eeb9285c85ee74a091, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: tovaglia
+    second: {fileID: 2100000, guid: a53d489f23ee44e89a7c0494a05c89db, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
