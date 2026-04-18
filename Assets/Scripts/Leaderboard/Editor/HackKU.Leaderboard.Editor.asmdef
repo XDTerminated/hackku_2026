@@ -1,0 +1,19 @@
+{
+    "name": "HackKU.Leaderboard.Editor",
+    "rootNamespace": "HackKU.Leaderboard.Editor",
+    "references": [
+        "HackKU.Leaderboard",
+        "HackKU.TTS"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

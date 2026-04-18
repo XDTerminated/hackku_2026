@@ -83,3 +83,7 @@ Thumbs.db
 .env.*
 !.env.example
 /[Aa]ssets/[Ss]treamingAssets/.env
+
+# Leaderboard server (Node)
+/server/node_modules/
+/server/*.log
