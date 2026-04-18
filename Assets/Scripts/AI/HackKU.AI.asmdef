@@ -1,0 +1,18 @@
+{
+    "name": "HackKU.AI",
+    "rootNamespace": "HackKU.AI",
+    "references": [
+        "HackKU.TTS",
+        "HackKU.Core",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

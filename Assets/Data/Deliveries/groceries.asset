@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba3b45acfc0f1a349adee993a629c75c, type: 3}
+  m_Name: groceries
+  m_EditorClassIdentifier: 
+  itemId: groceries
+  displayName: Groceries
+  price: 45
+  happinessOnUse: 3
+  prefab: {fileID: 6994291852199395792, guid: c9bbe241d680f25429b09b683de06f2e, type: 3}

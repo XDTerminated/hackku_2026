@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
+  m_Name: EasygoingBarista
+  m_EditorClassIdentifier: 
+  characterName: The Easygoing Barista
+  description: Rent is covered, latte art is crisp, regulars tip in dollars and smiles.
+    You won't get rich pulling espresso, but you're probably the happiest person
+    at the register.
+  portrait: {fileID: 0}
+  startingMoney: 1500
+  startingHappiness: 74
+  yearlyIncome: 32000
+  yearlyExpenses: 20000
+  yearlyHappinessRegen: 3
+  gimmickTag: Zen & Tips

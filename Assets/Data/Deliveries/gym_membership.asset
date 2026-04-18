@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba3b45acfc0f1a349adee993a629c75c, type: 3}
+  m_Name: gym_membership
+  m_EditorClassIdentifier: 
+  itemId: gym_membership
+  displayName: Gym Membership
+  price: 80
+  happinessOnUse: 5
+  prefab: {fileID: 7415194109506776643, guid: 48c2294148090ea4cae574e181940d44, type: 3}

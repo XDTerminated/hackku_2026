@@ -104,37 +104,68 @@ namespace HackKU.TTS
             var json = JsonUtility.ToJson(body);
             var payload = Encoding.UTF8.GetBytes(json);
 
-            var url = $"{config.baseUrl}/text-to-speech/{UnityWebRequest.EscapeURL(profile.voiceId)}?output_format={UnityWebRequest.EscapeURL(config.outputFormat)}";
+            // Use the /stream endpoint so audio starts arriving token-by-token.
+            // Combined with DownloadHandlerAudioClip.streamAudio=true, playback can begin
+            // before the full download finishes. No temp-file I/O on the main thread.
+            var url = $"{config.baseUrl}/text-to-speech/{UnityWebRequest.EscapeURL(profile.voiceId)}/stream?output_format={UnityWebRequest.EscapeURL(config.outputFormat)}";
 
-            using var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
-            req.uploadHandler = new UploadHandlerRaw(payload) { contentType = "application/json" };
-            req.downloadHandler = new DownloadHandlerBuffer();
-            req.SetRequestHeader("xi-api-key", _apiKey);
-            req.SetRequestHeader("Content-Type", "application/json");
-            req.SetRequestHeader("Accept", "audio/pcm");
-            req.timeout = config.timeoutSeconds;
+            bool isMp3 = config.outputFormat.StartsWith("mp3");
+            bool isPcm = config.outputFormat.StartsWith("pcm");
 
-            if (config.verboseLogging) Debug.Log($"[ElevenLabs] POST {url} — '{Preview(text)}'");
+            AudioClip clip = null;
 
-            yield return req.SendWebRequest();
-
-            if (req.result != UnityWebRequest.Result.Success)
+            if (isMp3)
             {
-                var msg = $"HTTP {(int)req.responseCode} {req.error}";
-                if (req.downloadHandler?.data != null && req.downloadHandler.data.Length > 0 &&
-                    req.downloadHandler.data.Length < 4096)
+                using var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+                req.uploadHandler = new UploadHandlerRaw(payload) { contentType = "application/json" };
+                var audioHandler = new DownloadHandlerAudioClip(url, AudioType.MPEG);
+                audioHandler.streamAudio = true;
+                req.downloadHandler = audioHandler;
+                req.SetRequestHeader("xi-api-key", _apiKey);
+                req.SetRequestHeader("Content-Type", "application/json");
+                req.SetRequestHeader("Accept", "audio/mpeg");
+                req.timeout = config.timeoutSeconds;
+
+                if (config.verboseLogging) Debug.Log($"[ElevenLabs] POST-stream {url} — '{Preview(text)}'");
+
+                yield return req.SendWebRequest();
+
+                if (req.result != UnityWebRequest.Result.Success)
                 {
-                    msg += " | " + Encoding.UTF8.GetString(req.downloadHandler.data);
+                    Report($"HTTP {(int)req.responseCode} {req.error}", onError);
+                    yield break;
                 }
-                Report(msg, onError);
-                yield break;
+
+                clip = DownloadHandlerAudioClip.GetContent(req);
+                if (clip != null) clip.name = $"TTS_{profile.voiceId}_{cacheKey.Substring(0, 8)}";
+            }
+            else if (isPcm)
+            {
+                using var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+                req.uploadHandler = new UploadHandlerRaw(payload) { contentType = "application/json" };
+                req.downloadHandler = new DownloadHandlerBuffer();
+                req.SetRequestHeader("xi-api-key", _apiKey);
+                req.SetRequestHeader("Content-Type", "application/json");
+                req.SetRequestHeader("Accept", "audio/pcm");
+                req.timeout = config.timeoutSeconds;
+
+                if (config.verboseLogging) Debug.Log($"[ElevenLabs] POST {url} — '{Preview(text)}'");
+
+                yield return req.SendWebRequest();
+
+                if (req.result != UnityWebRequest.Result.Success)
+                {
+                    Report($"HTTP {(int)req.responseCode} {req.error}", onError);
+                    yield break;
+                }
+
+                var pcm = req.downloadHandler.data;
+                clip = PcmAudioClipBuilder.FromPcm16(pcm, config.sampleRate, 1, $"TTS_{profile.voiceId}_{cacheKey.Substring(0, 8)}");
             }
 
-            var pcm = req.downloadHandler.data;
-            var clip = PcmAudioClipBuilder.FromPcm16(pcm, config.sampleRate, 1, $"TTS_{profile.voiceId}_{cacheKey.Substring(0, 8)}");
             if (clip == null)
             {
-                Report("Failed to decode PCM response.", onError);
+                Report("Failed to decode audio response (format=" + config.outputFormat + ").", onError);
                 yield break;
             }
 
