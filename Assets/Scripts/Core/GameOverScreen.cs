@@ -15,6 +15,7 @@ namespace HackKU.Core
         void OnEnable()
         {
             StatsManager.OnGameOver += HandleGameOver;
+            StatsManager.OnGameWon += HandleGameOver;
             if (restartButton != null) restartButton.onClick.AddListener(Restart);
             if (screenCanvas != null) screenCanvas.gameObject.SetActive(false);
         }
@@ -22,6 +23,7 @@ namespace HackKU.Core
         void OnDisable()
         {
             StatsManager.OnGameOver -= HandleGameOver;
+            StatsManager.OnGameWon -= HandleGameOver;
             if (restartButton != null) restartButton.onClick.RemoveListener(Restart);
         }
 
@@ -39,7 +41,8 @@ namespace HackKU.Core
             switch (cause)
             {
                 case "broke": return "You went broke.";
-                case "miserable": return "You became miserable.";
+                case "miserable": return "You burned out.";
+                case "debt_free": return "You paid off your loans!";
                 default: return cause;
             }
         }
@@ -52,6 +55,8 @@ namespace HackKU.Core
                     return "Every dollar you let slip adds up. Budget first, splurge second.";
                 case "miserable":
                     return "Money means nothing if you never did what made you happy.";
+                case "debt_free":
+                    return "Freedom starts the day your last loan payment clears.";
                 default:
                     return "Balance what you earn against what actually makes life worth living.";
             }

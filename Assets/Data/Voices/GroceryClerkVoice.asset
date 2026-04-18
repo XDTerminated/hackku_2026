@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Grocery Clerk (Daniel)
   modelIdOverride: 
   voiceSettings:
-    stability: 0.45
+    stability: 0.4
     similarity_boost: 0.8
-    style: 0
+    style: 0.35
     use_speaker_boost: 1

@@ -28,7 +28,7 @@ namespace HackKU.AI
             }
         }
 
-        public static string ChatModel => "llama-3.3-70b-versatile";
+        public static string ChatModel => "llama-3.1-8b-instant";
         public static string WhisperModel => "whisper-large-v3-turbo";
 
         public static string BaseUrl => "https://api.groq.com/openai/v1";

@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Mom (Lily)
   modelIdOverride: 
   voiceSettings:
-    stability: 0.5
+    stability: 0.3
     similarity_boost: 0.75
-    style: 0.2
+    style: 0.55
     use_speaker_boost: 1

@@ -7,7 +7,10 @@ namespace HackKU.Core
     public class HandsetController : MonoBehaviour
     {
         [Tooltip("Distance from cradle rest pose below which the handset will auto-dock. Larger = more forgiving.")]
-        public float cradleProximity = 0.25f;
+        public float cradleProximity = 0.6f;
+
+        [Tooltip("Generous AABB (half-extents, local cradle space) around the rest pose. Release anywhere inside this box and the handset snaps back.")]
+        public Vector3 cradleZoneHalfExtents = new Vector3(0.6f, 0.8f, 0.5f);
 
         [Tooltip("Seconds to smoothly blend back to the exact cradle rest pose when docking.")]
         public float dockBlendSeconds = 0.2f;
@@ -89,7 +92,22 @@ namespace HackKU.Core
         {
             if (cradleSpace == null) return false;
             var worldRest = cradleSpace.TransformPoint(restLocalPos);
+
+            // Primary test: sphere proximity (quick, isotropic).
             if (Vector3.Distance(transform.position, worldRest) <= cradleProximity)
+            {
+                DockToCradle();
+                return true;
+            }
+
+            // Secondary test: wider AABB in the cradle's local space. Release anywhere
+            // inside this box snaps to the cradle — much more forgiving than a pure radius.
+            Vector3 localHandset = cradleSpace.InverseTransformPoint(transform.position);
+            Vector3 localRest = restLocalPos;
+            Vector3 d = localHandset - localRest;
+            if (Mathf.Abs(d.x) <= cradleZoneHalfExtents.x &&
+                Mathf.Abs(d.y) <= cradleZoneHalfExtents.y &&
+                Mathf.Abs(d.z) <= cradleZoneHalfExtents.z)
             {
                 DockToCradle();
                 return true;

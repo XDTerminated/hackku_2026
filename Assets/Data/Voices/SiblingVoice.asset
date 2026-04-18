@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Sibling (Sarah)
   modelIdOverride: 
   voiceSettings:
-    stability: 0.55
-    similarity_boost: 0.7
-    style: 0.25
+    stability: 0.28
+    similarity_boost: 0.75
+    style: 0.55
     use_speaker_boost: 1

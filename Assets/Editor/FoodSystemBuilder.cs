@@ -191,38 +191,20 @@ namespace HackKU.EditorTools
 
         static void AddHungerRowToWristWatch()
         {
+            // WristWatchBuilder now owns the wrist layout (TMP-based). Just wire the existing
+            // Hunger TMP_Text if it's there; do nothing otherwise.
             var canvas = GameObject.Find("WristCanvas");
             if (canvas == null) return;
             var watch = canvas.GetComponent<WristWatchUI>();
             if (watch == null) return;
 
             var existing = canvas.transform.Find("Hunger");
-            if (existing == null)
+            if (existing != null)
             {
-                var go = new GameObject("Hunger", typeof(RectTransform));
-                var rt = (RectTransform)go.transform;
-                rt.SetParent(canvas.transform, false);
-                rt.anchorMin = new Vector2(0f, 0f);
-                rt.anchorMax = new Vector2(1f, 0.3f);
-                rt.offsetMin = new Vector2(10, 4);
-                rt.offsetMax = new Vector2(-10, -4);
-                var txt = go.AddComponent<Text>();
-                txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                txt.fontSize = 28;
-                txt.alignment = TextAnchor.MiddleCenter;
-                txt.fontStyle = FontStyle.Bold;
-                txt.color = new Color(1f, 0.8f, 0.5f);
-                txt.text = "Hunger 100";
-                watch.hungerText = txt;
-                existing = go.transform;
+                var tmp = existing.GetComponent<TMPro.TMP_Text>();
+                if (tmp != null) watch.hungerText = tmp;
+                EditorUtility.SetDirty(watch);
             }
-            else
-            {
-                var txt = existing.GetComponent<Text>();
-                if (txt != null) watch.hungerText = txt;
-            }
-
-            EditorUtility.SetDirty(watch);
         }
 
         static void WireFoodOrderController(FoodItem[] items)

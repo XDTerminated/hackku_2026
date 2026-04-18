@@ -17,6 +17,12 @@ namespace HackKU.Core
         [Tooltip("If true, door opens automatically when the player enters the trigger.")]
         public bool autoOpenOnTriggerEnter = true;
 
+        [Tooltip("If true, door closes automatically after the player leaves the trigger.")]
+        public bool autoCloseOnTriggerExit = true;
+
+        [Tooltip("Seconds to wait after the player exits the trigger before closing.")]
+        public float autoCloseDelay = 0.8f;
+
         public bool IsOpen { get; private set; }
         public bool IsAnimating { get; private set; }
 
@@ -68,13 +74,41 @@ namespace HackKU.Core
             IsAnimating = false;
         }
 
+        Coroutine closeDelayRoutine;
+
+        static bool IsPlayerCollider(Collider other)
+        {
+            if (other == null) return false;
+            if (other.CompareTag("Player") || other.CompareTag("MainCamera")) return true;
+            // Fallback: any non-trigger collider attached to a CharacterController/Rigidbody
+            // hierarchy counts as "the player" so we don't rely on tags being set correctly.
+            if (other.GetComponentInParent<CharacterController>() != null) return true;
+            var rb = other.attachedRigidbody;
+            if (rb != null && rb.CompareTag("Player")) return true;
+            return false;
+        }
+
         void OnTriggerEnter(Collider other)
         {
             if (!autoOpenOnTriggerEnter) return;
-            if (other.CompareTag("Player") || other.CompareTag("MainCamera"))
-            {
-                Open();
-            }
+            if (!IsPlayerCollider(other)) return;
+            if (closeDelayRoutine != null) { StopCoroutine(closeDelayRoutine); closeDelayRoutine = null; }
+            Open();
+        }
+
+        void OnTriggerExit(Collider other)
+        {
+            if (!autoCloseOnTriggerExit) return;
+            if (!IsPlayerCollider(other)) return;
+            if (closeDelayRoutine != null) StopCoroutine(closeDelayRoutine);
+            closeDelayRoutine = StartCoroutine(CloseAfterDelay());
+        }
+
+        IEnumerator CloseAfterDelay()
+        {
+            yield return new WaitForSeconds(autoCloseDelay);
+            Close();
+            closeDelayRoutine = null;
         }
     }
 }

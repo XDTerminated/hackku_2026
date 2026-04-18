@@ -13,8 +13,8 @@ namespace HackKU.AI
         [SerializeField] CallScenario[] scenarios;
 
         [Header("Cadence (real seconds)")]
-        [SerializeField] float minGapSeconds = 3f;
-        [SerializeField] float maxGapSeconds = 10f;
+        [SerializeField] float minGapSeconds = 10f;
+        [SerializeField] float maxGapSeconds = 20f;
         [SerializeField] float firstCallDelay = 5f;
 
         [SerializeField] bool verboseLogging = true;
@@ -141,8 +141,7 @@ namespace HackKU.AI
             var sm = StatsManager.Instance;
             string id = s.scenarioId ?? "";
 
-            // Debt collector: only call if the player is actually behind on money (<= 0).
-            if (id == "debt_collector" && sm != null && sm.Money > 0f) return false;
+            // (debt_collector was retired — it was a pure money-loss punish call with no trade.)
 
             // Gym sales: only call if happiness is below 70 (they're targeting unhappy people).
             // (Optional — feel free to loosen if too rare.)

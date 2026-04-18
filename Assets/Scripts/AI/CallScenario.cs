@@ -36,5 +36,19 @@ namespace HackKU.AI
 
         [Tooltip("Hard safety cap on the number of user<->assistant exchanges.")]
         public int maxTurns = 6;
+
+        [Header("Deterministic outcome on yes/no")]
+        [Tooltip("Delta applied to Checking when the player commits (yes). Negative = cost.")]
+        public float yesMoneyDelta;
+        [Tooltip("Delta applied to Happiness when the player commits (yes).")]
+        public float yesHappinessDelta;
+        [Tooltip("Short reason string for the yes outcome (shown on toast and lesson log).")]
+        public string yesReason = "Accepted the offer";
+
+        [Tooltip("Delta applied to Checking when the player declines.")]
+        public float noMoneyDelta;
+        [Tooltip("Delta applied to Happiness when the player declines.")]
+        public float noHappinessDelta;
+        public string noReason = "Declined the offer";
     }
 }

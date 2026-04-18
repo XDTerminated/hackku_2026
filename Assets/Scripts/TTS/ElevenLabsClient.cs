@@ -132,7 +132,10 @@ namespace HackKU.TTS
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Report($"HTTP {(int)req.responseCode} {req.error}", onError);
+                    // ElevenLabs encodes error reason in the response body JSON; surface it
+                    // so we can tell "quota_exceeded" vs "free-tier can't stream" vs "voice paid-only".
+                    string errBody = TryReadErrorBody(req);
+                    Report($"HTTP {(int)req.responseCode} {req.error} | {errBody}", onError);
                     yield break;
                 }
 
@@ -155,7 +158,8 @@ namespace HackKU.TTS
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Report($"HTTP {(int)req.responseCode} {req.error}", onError);
+                    string errBody = TryReadErrorBody(req);
+                    Report($"HTTP {(int)req.responseCode} {req.error} | {errBody}", onError);
                     yield break;
                 }
 
@@ -254,6 +258,26 @@ namespace HackKU.TTS
         {
             Debug.LogError("[ElevenLabs] " + message);
             onError?.Invoke(message);
+        }
+
+        // ElevenLabs returns a JSON error body like
+        //   {"detail":{"status":"quota_exceeded","message":"..."}}
+        // Surface whatever fragment we can.
+        private static string TryReadErrorBody(UnityWebRequest req)
+        {
+            try
+            {
+                if (req?.downloadHandler == null) return "";
+                var text = req.downloadHandler.text;
+                if (string.IsNullOrEmpty(text))
+                {
+                    var data = req.downloadHandler.data;
+                    if (data != null && data.Length > 0) text = Encoding.UTF8.GetString(data);
+                }
+                if (string.IsNullOrEmpty(text)) return "";
+                return text.Length > 300 ? text.Substring(0, 300) : text;
+            }
+            catch { return ""; }
         }
     }
 }

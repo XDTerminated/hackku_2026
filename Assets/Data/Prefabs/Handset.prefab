@@ -229,7 +229,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 644f03f67dd0d164f8924b00c36e3b5e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cradleProximity: 0.25
+  cradleProximity: 0.6
+  cradleZoneHalfExtents: {x: 0.6, y: 0.8, z: 0.5}
   dockBlendSeconds: 0.2
   dropSettleSeconds: 0.8
 --- !u!1 &1063834304264306663

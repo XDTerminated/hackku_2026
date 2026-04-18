@@ -9,14 +9,16 @@ namespace HackKU.Core
     {
         public static FinanceScheduler Instance { get; private set; }
 
-        [Header("Bills (month 0-11, amount, label)")]
-        [SerializeField] Bill[] bills = new[]
-        {
-            new Bill{ month = 2,  amount = 1400f, label = "Rent" },
-            new Bill{ month = 5,  amount = 180f,  label = "Utilities" },
-            new Bill{ month = 8,  amount = 80f,   label = "Internet" },
-            new Bill{ month = 11, amount = 15f,   label = "Streaming" },
-        };
+        [Header("Bills (month 0-11, amount, label) — now spawned as physical papers via BillSpawner.")]
+        [SerializeField] Bill[] bills = new Bill[0];
+        [Tooltip("Paychecks per year. 2 = every 6 months (slower, encourages saving).")]
+        [SerializeField] int paychecksPerYear = 2;
+        [Tooltip("Multiplier on the paycheck amount. 0.6 makes income feel tighter.")]
+        [SerializeField] float paycheckMultiplier = 0.6f;
+
+        [Header("Student-loan debt")]
+        [Tooltip("Monthly compounding interest rate on outstanding debt (0.005 = 0.5% per in-game month).")]
+        [SerializeField] float monthlyInterestRate = 0.005f;
 
         [Header("Happiness")]
         [Tooltip("Happiness points added per month if the player is fine (hunger OK, money OK).")]
@@ -72,29 +74,33 @@ namespace HackKU.Core
             var profile = sm.ActiveProfile;
             if (profile == null) return;
 
-            // Quarterly paycheck — fires only on months 0, 3, 6, 9 so player isn't drowned
-            // in constant small paychecks. Each quarterly paycheck is yearlyIncome / 4.
-            if (profile.yearlyIncome > 0f && monthIndex % 3 == 0)
+            // Tunable paycheck cadence + amount multiplier. Default: every 6 months at 60% of
+            // the raw quarterly rate — deliberately tight so phone calls actually matter.
+            int n = Mathf.Max(1, paychecksPerYear);
+            int monthsBetween = Mathf.Max(1, 12 / n);
+            if (profile.yearlyIncome > 0f && (monthIndex % monthsBetween) == 0)
             {
-                float amount = profile.yearlyIncome / 4f;
-                sm.ApplyDelta(amount, 0f, "Paycheck");
-                ToastHUD.Show("+$" + Mathf.Round(amount), "Paycheck", ToastKind.Income);
-            }
-
-            if (profile.yearlyExpenses > 0f)
-            {
-                float amount = profile.yearlyExpenses / 12f;
-                sm.ApplyDelta(-amount, 0f, "Living costs");
-            }
-
-            for (int i = 0; i < bills.Length; i++)
-            {
-                if (bills[i].month == monthIndex)
+                // Whole paycheck lands in Checking. Paying down debt is now a deliberate
+                // action — call the bank and say how much to pay.
+                float amount = (profile.yearlyIncome / n) * paycheckMultiplier;
+                if (amount > 0f)
                 {
-                    sm.ApplyDelta(-bills[i].amount, 0f, bills[i].label);
-                    ToastHUD.Show("-$" + Mathf.Round(bills[i].amount), bills[i].label, ToastKind.Bill);
+                    sm.ApplyDelta(amount, 0f, "Paycheck");
+                    ToastHUD.Show("+$" + Mathf.Round(amount), "Paycheck", ToastKind.Income);
                 }
             }
+
+            // Monthly debt interest — silent, no toast; the wrist debt bar reflects it.
+            if (monthlyInterestRate > 0f && sm.Debt > 0f)
+            {
+                float interest = sm.Debt * monthlyInterestRate;
+                sm.ApplyDebtDelta(interest, "");
+            }
+
+            // Old monthly auto-bill loop and living-costs drain have been DELETED on purpose.
+            // The only way money leaves Checking is now: physical bill pickup, food call, or bank call.
+            // Even if the old `bills` serialized field still has entries in the scene file,
+            // we never read it — nothing auto-deducts here.
 
             if (!Mathf.Approximately(monthlyHappinessDrift, 0f))
             {

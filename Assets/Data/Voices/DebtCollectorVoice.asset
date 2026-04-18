@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Debt Collector (George)
   modelIdOverride: 
   voiceSettings:
-    stability: 0.4
+    stability: 0.35
     similarity_boost: 0.85
-    style: 0
+    style: 0.45
     use_speaker_boost: 1

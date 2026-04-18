@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Pizza Guy (Callum)
   modelIdOverride: 
   voiceSettings:
-    stability: 0.5
-    similarity_boost: 0.7
-    style: 0.15
+    stability: 0.3
+    similarity_boost: 0.75
+    style: 0.55
     use_speaker_boost: 1

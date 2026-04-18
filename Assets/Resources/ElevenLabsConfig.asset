@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseUrl: https://api.elevenlabs.io/v1
   apiKeyEnvVar: ELEVENLABS_API_KEY
-  defaultModelId: eleven_flash_v2_5
+  defaultModelId: eleven_turbo_v2_5
   outputFormat: mp3_44100_32
   sampleRate: 44100
   timeoutSeconds: 30

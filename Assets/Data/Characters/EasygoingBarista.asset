@@ -11,15 +11,16 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
   m_Name: EasygoingBarista
-  m_EditorClassIdentifier: 
-  characterName: The Easygoing Barista
-  description: Rent is covered, latte art is crisp, regulars tip in dollars and smiles.
-    You won't get rich pulling espresso, but you're probably the happiest person
-    at the register.
+  m_EditorClassIdentifier:
+  characterName: Zoe
+  description: "Scholarships kept the debt small, but so did the paycheck. You live
+    cheap, laugh often, and own your time \u2014 the loans just need patience."
   portrait: {fileID: 0}
-  startingMoney: 1500
-  startingHappiness: 74
-  yearlyIncome: 12000
-  yearlyExpenses: 5000
-  yearlyHappinessRegen: 3
-  gimmickTag: Zen & Tips
+  startingMoney: 450
+  startingHappiness: 78
+  yearlyIncome: 9000
+  yearlyExpenses: 0
+  yearlyHappinessRegen: 2
+  gimmickTag: Low debt, high happiness
+  startingDebt: 8000
+  paycheckDebtSplit: 0.2

@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Buddy (Liam)
   modelIdOverride: 
   voiceSettings:
-    stability: 0.55
-    similarity_boost: 0.65
-    style: 0.3
+    stability: 0.3
+    similarity_boost: 0.7
+    style: 0.6
     use_speaker_boost: 1

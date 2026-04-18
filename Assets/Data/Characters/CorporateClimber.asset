@@ -11,15 +11,17 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
   m_Name: CorporateClimber
-  m_EditorClassIdentifier: 
-  characterName: The Corporate Climber
-  description: "Big paycheck, bigger obligations. You already own the suit, the lease,
-    and the espresso machine. The money flows \u2014 as long as you keep grinding.
-    The joy? That's on backorder."
+  m_EditorClassIdentifier:
+  characterName: Marcus
+  description: "Fresh out of the grind factory. The salary is real, so is the $40K
+    of loans chained to it. Every hour on the clock buys a future \u2014 if you
+    don't burn out first."
   portrait: {fileID: 0}
-  startingMoney: 4000
-  startingHappiness: 34
-  yearlyIncome: 20000
-  yearlyExpenses: 6000
-  yearlyHappinessRegen: -2
-  gimmickTag: Golden Handcuffs
+  startingMoney: 600
+  startingHappiness: 45
+  yearlyIncome: 22000
+  yearlyExpenses: 0
+  yearlyHappinessRegen: -1
+  gimmickTag: High income, crushing loans
+  startingDebt: 40000
+  paycheckDebtSplit: 0.45

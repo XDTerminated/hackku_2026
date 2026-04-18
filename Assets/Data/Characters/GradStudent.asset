@@ -11,15 +11,17 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
   m_Name: GradStudent
-  m_EditorClassIdentifier: 
-  characterName: The Grad Student
-  description: "Tuition ate the savings, the stipend barely covers rent, and the
-    dissertation is always 'almost done.' Still \u2014 the library is free, friends
-    are close, and the future feels possible."
+  m_EditorClassIdentifier:
+  characterName: Kai
+  description: "Diploma in one hand, job offer in the other. The loans are average,
+    the paycheck is average, the runway is yours to shape. Balance is the whole
+    game."
   portrait: {fileID: 0}
-  startingMoney: -800
-  startingHappiness: 55
-  yearlyIncome: 8000
-  yearlyExpenses: 4000
-  yearlyHappinessRegen: 1
-  gimmickTag: Ramen & Dreams
+  startingMoney: 900
+  startingHappiness: 60
+  yearlyIncome: 14000
+  yearlyExpenses: 0
+  yearlyHappinessRegen: 0
+  gimmickTag: Balanced start
+  startingDebt: 20000
+  paycheckDebtSplit: 0.3

@@ -36,7 +36,7 @@ namespace HackKU.AI
         public bool IsCallActive { get; private set; }
 
         [Tooltip("Maximum real-time seconds a single call can stay active before being forcibly aborted. Safety net against stuck coroutines or non-terminating LLM flows.")]
-        [SerializeField] private float maxCallDurationSeconds = 90f;
+        [SerializeField] private float maxCallDurationSeconds = 180f;
         private float _callStartTime;
 
         private void Update()
@@ -240,14 +240,47 @@ namespace HackKU.AI
                 if (verboseLogging) Debug.Log($"[CallController] Turn {turn} — player said: {userText}");
                 _session.AppendUser(userText);
 
-                // After turn 2, if the LLM still hasn't emitted apply_outcome, push it hard to resolve.
-                if (turn >= 2)
+                // Hard commitment detector — if the player clearly said yes / no, we apply the
+                // scenario's authored outcome RIGHT HERE (deterministic, doesn't depend on the
+                // small LLM to emit the right numbers), then ask the LLM for a goodbye only.
+                if (LooksLikeYesNo(userText, out bool saidYes))
                 {
+                    CallOutcome det = new CallOutcome
+                    {
+                        moneyDelta = saidYes ? scenario.yesMoneyDelta : scenario.noMoneyDelta,
+                        happinessDelta = saidYes ? scenario.yesHappinessDelta : scenario.noHappinessDelta,
+                        reason = saidYes ? scenario.yesReason : scenario.noReason,
+                    };
+                    ApplyOutcome(det);
+
                     _session.AppendUser(
-                        "(SYSTEM: The player has spoken enough. Call the 'apply_outcome' function NOW with your best " +
-                        "interpretation of their commitment from the latest message, then speak one short goodbye line. " +
-                        "Do not ask further questions.)");
+                        "(SYSTEM: The player clearly " + (saidYes ? "SAID YES — the deal is done" : "SAID NO — they declined") +
+                        ". Speak ONE short, warm, in-character goodbye now — 1-2 sentences max. No questions. No restating. Just goodbye.)");
+                    var byeTask = SafeChatNoTools(ct);
+                    while (!byeTask.IsCompleted) yield return null;
+                    string bye = null;
+                    if (!ct.IsCancellationRequested && byeTask.Result?.choices != null && byeTask.Result.choices.Count > 0)
+                        bye = byeTask.Result.choices[0].message?.content;
+                    if (string.IsNullOrWhiteSpace(bye)) bye = saidYes ? "Alright, see you soon — bye!" : "No worries — take care!";
+                    bye = SanitizeForSpeech(bye);
+                    if (!ct.IsCancellationRequested && IsCallActive)
+                    {
+                        npcVoice.Speak(bye);
+                        yield return WaitForNpcToFinishSpeaking();
+                    }
+                    OnCallResolved?.Invoke(scenario, det);
+                    break;
                 }
+
+                // Gentle, persistent reminder every turn: clarifying questions are never commitments.
+                // The LLM may still end the call on its own if the conversation is truly pointless,
+                // but we never *force* it to resolve early — the player should be able to ask as many
+                // follow-up questions as they want before making a decision.
+                _session.AppendUser(
+                    "(SYSTEM reminder: if the player's last message is a question, a clarifying probe, " +
+                    "or anything short of an explicit yes/no commitment, DO NOT call apply_outcome yet. " +
+                    "Answer them in character and keep the conversation going. Only resolve when the player " +
+                    "has clearly committed in their own words, OR when the exchange has become circular and pointless.)");
 
                 // 4) Ask the LLM.
                 var chatTask = SafeChat(ct);
@@ -261,7 +294,12 @@ namespace HackKU.AI
 
                 if (assistantMsg == null)
                 {
-                    Debug.LogWarning("[CallController] Groq returned no message — ending call.");
+                    Debug.LogWarning("[CallController] Groq returned no message — speaking fallback and ending.");
+                    // Usually a Groq 429 rate-limit or network hiccup. Speak an in-character
+                    // "line is breaking up" beat so the call doesn't die silently.
+                    string fallback = "Sorry, the line's breaking up — I'll have to call you back. Bye.";
+                    npcVoice.Speak(fallback);
+                    yield return WaitForNpcToFinishSpeaking();
                     break;
                 }
 
@@ -275,24 +313,27 @@ namespace HackKU.AI
                     // Let the model know the tool ran (keeps the history valid if we ever continue).
                     _session.AppendToolResult(toolCallId, "{\"ok\":true}");
 
-                    // Speak any goodbye text that came alongside the tool call.
-                    string goodbye = assistantMsg.content;
-
-                    // If Groq returned ONLY a tool call with no text, ask for one short sign-off line.
-                    if (string.IsNullOrWhiteSpace(goodbye))
+                    // ALWAYS request a fresh, tool-less goodbye line so the caller signs off clearly
+                    // instead of hanging up silently. Any pre-tool-call content is too unreliable
+                    // (often empty, sometimes a repeated clarifying question).
+                    string goodbye = null;
+                    _session.AppendUser(
+                        "(The deal is done. Now speak ONE natural in-character sign-off line to end the call — " +
+                        "2 short sentences max, warm and clearly final, like 'Alright, thanks honey — talk soon. Bye.' " +
+                        "Do NOT call any tools. Do NOT ask questions. Plain spoken English only.)");
+                    var goodbyeTask = SafeChatNoTools(ct);
+                    while (!goodbyeTask.IsCompleted) yield return null;
+                    if (!ct.IsCancellationRequested && IsCallActive)
                     {
-                        _session.AppendUser("(say one short in-character goodbye now, then end the call)");
-                        var goodbyeTask = SafeChat(ct);
-                        while (!goodbyeTask.IsCompleted) yield return null;
-                        if (!ct.IsCancellationRequested && IsCallActive)
+                        var resp = goodbyeTask.Result;
+                        if (resp?.choices != null && resp.choices.Count > 0 && resp.choices[0].message != null)
                         {
-                            var resp = goodbyeTask.Result;
-                            if (resp?.choices != null && resp.choices.Count > 0 && resp.choices[0].message != null)
-                            {
-                                goodbye = resp.choices[0].message.content;
-                            }
+                            goodbye = resp.choices[0].message.content;
                         }
                     }
+                    // Fallback to pre-tool content, then a hard-coded line, so something ALWAYS plays.
+                    if (string.IsNullOrWhiteSpace(goodbye)) goodbye = assistantMsg.content;
+                    if (string.IsNullOrWhiteSpace(goodbye)) goodbye = "Alright, take care. Bye.";
 
                     goodbye = SanitizeForSpeech(goodbye);
                     if (!ct.IsCancellationRequested && IsCallActive && !string.IsNullOrWhiteSpace(goodbye))
@@ -324,6 +365,35 @@ namespace HackKU.AI
 
         // ---------- Helpers ----------
 
+        // Quick-and-dirty yes/no detector. Looks for explicit commitment phrases in the
+        // player's speech so we can force the NPC to resolve the call instead of looping.
+        static bool LooksLikeYesNo(string text, out bool yes)
+        {
+            yes = false;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            // Strip punctuation so Whisper's "Yeah, that works." still matches " yeah ".
+            string cleaned = System.Text.RegularExpressions.Regex.Replace(text.ToLowerInvariant(), @"[^a-z0-9']", " ");
+            string t = " " + System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", " ").Trim() + " ";
+            string[] yesHits = {
+                " yes ", " yeah ", " yep ", " yup ", " ya ", " yah ", " sure ",
+                " sounds good ", " sounds great ", " sounds fine ", " sounds like a plan ",
+                " works for me ", " that works ", " that ll work ", " that will work ",
+                " i m in ", " im in ", " count me in ", " let s do it ", " lets do it ", " lets go ", " let s go ",
+                " i ll do it ", " ill do it ", " i ll go ", " ill go ", " i would go ", " id go ", " i d go ",
+                " i ll take it ", " ill take it ", " i ll book ", " ill book ", " book it ", " book me ",
+                " put me down ", " deal ", " done deal ", " okay i ll ", " ok i ll ",
+                " sign me up ", " absolutely ", " definitely ", " you got it ", " for sure ", " alright i ll ", " perfect ",
+            };
+            string[] noHits = {
+                " no ", " nope ", " nah ", " can t ", " cant ", " not this time ", " i m out ", " im out ",
+                " hard pass ", " pass ", " i ll skip ", " ill skip ", " maybe next time ", " not today ",
+                " no thanks ", " no thank you ", " decline ", " can t afford ", " cant afford ",
+            };
+            foreach (var k in yesHits) if (t.Contains(k)) { yes = true; return true; }
+            foreach (var k in noHits) if (t.Contains(k)) { yes = false; return true; }
+            return false;
+        }
+
         // Safety net: strips stage-direction style noise from LLM output so the TTS voice
         // doesn't read "*sighs*", "[crying]", "(pause)", etc. aloud. The system prompt already
         // forbids these, but models occasionally slip.
@@ -336,6 +406,8 @@ namespace HackKU.AI
         {
             if (string.IsNullOrEmpty(s)) return s;
             string cleaned = _stageDirectionRx.Replace(s, string.Empty);
+            // Rewrite dollar figures to spoken form so ElevenLabs doesn't stumble on "$".
+            cleaned = HackKU.Core.SpeechUtils.SpeakifyMoney(cleaned);
             // Collapse any doubled whitespace / dangling punctuation left over.
             cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s{2,}", " ");
             cleaned = cleaned.Replace(" ,", ",").Replace(" .", ".").Replace(" ?", "?").Replace(" !", "!");
@@ -413,6 +485,23 @@ namespace HackKU.AI
             catch (Exception ex)
             {
                 Debug.LogError("[CallController] Chat failed: " + ex.Message);
+                return null;
+            }
+        }
+
+        // Same as SafeChat but forces an empty tools list so the model MUST respond with plain speech.
+        // Used for the post-apply_outcome goodbye so it can't re-trigger the tool.
+        private async Task<ChatResponse> SafeChatNoTools(CancellationToken ct)
+        {
+            try
+            {
+                var msgs = _session.BuildRequestMessages();
+                return await _groq.SendChatAsync(msgs, new List<ToolDef>(), ct);
+            }
+            catch (OperationCanceledException) { return null; }
+            catch (Exception ex)
+            {
+                Debug.LogError("[CallController] Goodbye chat failed: " + ex.Message);
                 return null;
             }
         }

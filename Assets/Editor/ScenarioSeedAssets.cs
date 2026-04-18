@@ -20,14 +20,8 @@ namespace HackKU.EditorTools
 
         static ScenarioSeedAssets()
         {
-            // Only bootstrap once per editor session to keep domain reloads quiet.
-            if (SessionState.GetBool(SessionFlag, false))
-            {
-                return;
-            }
+            if (SessionState.GetBool(SessionFlag, false)) return;
             SessionState.SetBool(SessionFlag, true);
-
-            // Defer until after the first editor update so AssetDatabase is fully ready.
             EditorApplication.delayCall += () => SeedIfMissing(logNoOp: false);
         }
 
@@ -40,256 +34,314 @@ namespace HackKU.EditorTools
                 : $"[ScenarioSeedAssets] Created {created} scenario asset(s).");
         }
 
+        [MenuItem("HackKU/Seed/Force Overwrite All Scenarios")]
+        public static void ForceOverwriteFromMenu()
+        {
+            EnsureFolder(OutputFolder);
+            SeedDefinition[] seeds = GetSeedDefinitions();
+            int updated = 0;
+            foreach (SeedDefinition seed in seeds)
+            {
+                string assetPath = $"{OutputFolder}/{seed.fileName}.asset";
+                CallScenario s = AssetDatabase.LoadAssetAtPath<CallScenario>(assetPath);
+                if (s == null)
+                {
+                    s = ScriptableObject.CreateInstance<CallScenario>();
+                    AssetDatabase.CreateAsset(s, assetPath);
+                }
+                s.scenarioId = seed.scenarioId;
+                s.callerName = seed.callerName;
+                s.situation = seed.situation;
+                s.systemPrompt = seed.systemPrompt;
+                s.openingLine = seed.openingLine;
+                s.maxConversationSeconds = seed.maxConversationSeconds;
+                s.maxTurns = seed.maxTurns;
+                s.yesMoneyDelta = seed.yesMoney;
+                s.yesHappinessDelta = seed.yesHappiness;
+                s.yesReason = seed.yesReason;
+                s.noMoneyDelta = seed.noMoney;
+                s.noHappinessDelta = seed.noHappiness;
+                s.noReason = seed.noReason;
+                EditorUtility.SetDirty(s);
+                updated++;
+            }
+
+            // Retired scenarios — delete their .asset files so CallDirector rewire doesn't pick them up.
+            string[] obsolete = {
+                "PizzaImpulse", "DebtCollector", "LandlordLateRent", "ScamIRS",
+                "BossOvertime", "GymUpsell", "InsuranceUpsell", "DentistReminder",
+                "FreelanceGig", "OvernightShift", "PlasmaDonation", "DadAdvice",
+            };
+            foreach (var name in obsolete)
+            {
+                string p = $"{OutputFolder}/{name}.asset";
+                if (AssetDatabase.LoadAssetAtPath<CallScenario>(p) != null)
+                    AssetDatabase.DeleteAsset(p);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[ScenarioSeedAssets] Force-updated {updated} scenarios.");
+        }
+
         private static int SeedIfMissing(bool logNoOp)
         {
             EnsureFolder(OutputFolder);
-
             SeedDefinition[] seeds = GetSeedDefinitions();
             int created = 0;
-
             foreach (SeedDefinition seed in seeds)
             {
                 string assetPath = $"{OutputFolder}/{seed.fileName}.asset";
                 CallScenario existing = AssetDatabase.LoadAssetAtPath<CallScenario>(assetPath);
-                if (existing != null)
-                {
-                    continue;
-                }
-
+                if (existing != null) continue;
                 CallScenario scenario = ScriptableObject.CreateInstance<CallScenario>();
                 scenario.scenarioId = seed.scenarioId;
                 scenario.callerName = seed.callerName;
-                scenario.voiceProfile = null; // designer assigns
+                scenario.voiceProfile = null;
                 scenario.situation = seed.situation;
                 scenario.systemPrompt = seed.systemPrompt;
                 scenario.openingLine = seed.openingLine;
                 scenario.maxConversationSeconds = seed.maxConversationSeconds;
                 scenario.maxTurns = seed.maxTurns;
-
                 AssetDatabase.CreateAsset(scenario, assetPath);
                 created++;
                 Debug.Log($"[ScenarioSeedAssets] Created {assetPath}");
             }
-
-            if (created > 0)
-            {
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
-            else if (logNoOp)
-            {
-                Debug.Log("[ScenarioSeedAssets] No missing seeds — nothing created.");
-            }
-
+            if (created > 0) { AssetDatabase.SaveAssets(); AssetDatabase.Refresh(); }
+            else if (logNoOp) Debug.Log("[ScenarioSeedAssets] No missing seeds — nothing created.");
             return created;
         }
 
         private static void EnsureFolder(string assetFolderPath)
         {
-            if (AssetDatabase.IsValidFolder(assetFolderPath))
-            {
-                return;
-            }
-
+            if (AssetDatabase.IsValidFolder(assetFolderPath)) return;
             string[] parts = assetFolderPath.Split('/');
-            string current = parts[0]; // "Assets"
+            string current = parts[0];
             for (int i = 1; i < parts.Length; i++)
             {
                 string next = $"{current}/{parts[i]}";
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(current, parts[i]);
-                }
+                if (!AssetDatabase.IsValidFolder(next)) AssetDatabase.CreateFolder(current, parts[i]);
                 current = next;
             }
-
-            // Disk-side sanity — AssetDatabase should now agree it exists.
             string abs = Path.Combine(Directory.GetCurrentDirectory(), assetFolderPath);
-            if (!Directory.Exists(abs))
-            {
-                Directory.CreateDirectory(abs);
-            }
+            if (!Directory.Exists(abs)) Directory.CreateDirectory(abs);
         }
 
+        // All scenarios here are LIFE-EXPERIENCE trades: spend money (family, friends,
+        // self-care, celebrations) in exchange for happiness. No business calls, no
+        // pure money-loss punishments. Every opening line states the exact dollar amount.
         private static SeedDefinition[] GetSeedDefinitions()
         {
             const string sharedToolRule =
                 "CRITICAL VOICE RULES — this is a REAL PHONE CALL, not a story or roleplay:\n" +
                 "  * Output ONLY the exact words the caller would say out loud over the phone. Nothing else.\n" +
-                "  * NO stage directions, NO asterisk actions, NO emotes of any kind. Do NOT write things like " +
-                "'*sighs*', '*laughs*', '*chuckles*', '(pause)', '(nervous)', '[crying]', '*clears throat*', '— pause —', etc. " +
-                "Do NOT describe how you're saying things. Do NOT narrate.\n" +
-                "  * NO internal thoughts, NO stage whispers, NO 'she says quietly', NO parenthetical tone notes.\n" +
-                "  * NO emojis, NO markdown, NO bullet lists, NO headings. Plain spoken English only.\n" +
-                "  * The caller's FIRST reply always starts by clearly identifying themselves (name + relationship or role, " +
-                "e.g. 'Hey, it's your sister Emma' / 'This is Rick from Peak Performance Gym') in addition to the opening line already played, " +
-                "so the player has no doubt who is calling.\n" +
-                "  * One to two short, natural sentences per turn. Sound like a real person on a real phone call.\n\n" +
-                "Conversation flow: have a natural back-and-forth. The player may ask clarifying questions first ('how much?', " +
-                "'when?', 'who else is going?', 'why?', 'are you sure?'). Those are NOT commitments — answer them IN CHARACTER and keep the conversation going. " +
-                "NEVER call the 'apply_outcome' tool until the player has given a clear, unambiguous commitment in their own words, such as " +
-                "'yes, I'll do it', 'no, I can't', 'sure, sign me up', 'I'll send the money', 'I'm out', 'count me in', or similar explicit yes/no. " +
-                "If the response is vague, hesitant, or inquisitive, DO NOT call the tool yet — keep talking until they commit. Prefer asking a follow-up if unsure. " +
-                "When you DO call apply_outcome, the call is about to end. Immediately after the tool call, speak ONE short, warm, in-character goodbye " +
-                "so the player hears a clear sign-off before the line goes dead (e.g. 'Alright, love you honey — bye now.' / 'Perfect, we'll see you then, take care.' / 'Thanks, have a good one.'). " +
-                "Never call the tool and then stay silent. Stay in character throughout. Never mention numbers out loud.";
+                "  * NO stage directions, NO asterisk actions, NO emotes, NO narration. Do NOT write '*sighs*', '[crying]', '(pause)', etc.\n" +
+                "  * NO emojis, NO markdown. Plain spoken English only.\n" +
+                "  * The caller's FIRST reply starts by clearly identifying themselves (name + relationship).\n" +
+                "  * One to two short, natural sentences per turn.\n" +
+                "  * Use gender-neutral language for the player. Do NOT call them 'sir', 'ma'am', 'Mr.', 'Miss', 'dude', 'bro', 'man', 'son', 'girl'. Use 'you', their name, or neutral terms like 'friend'.\n\n" +
+                "Conversation flow: have natural back-and-forth. Clarifying questions ('how much?', 'when?', 'who else?') are NOT commitments — answer in character and keep talking. " +
+                "NEVER call 'apply_outcome' until the player gives a clear, unambiguous yes or no in their own words. " +
+                "When you DO call apply_outcome, immediately speak ONE short in-character goodbye so the player hears a clear sign-off (e.g. 'Love you — bye!' / 'See you Saturday!'). Never call the tool and stay silent.\n\n" +
+                "CRITICAL — State the EXACT dollar amount and the EXACT benefit out loud in your opening pitch AND any time the player asks. " +
+                "Use natural language ('it's four hundred bucks for the flowers, but it'd mean the world to her'). " +
+                "Do NOT hide the price. Do NOT be vague about the trade-off.";
 
             return new[]
             {
+                // 1) Sister's wedding — family moment ----------------------------------
                 new SeedDefinition
                 {
                     fileName = "MomWedding",
                     scenarioId = "mom_wedding",
                     callerName = "Mom",
-                    situation =
-                        "Mom is calling about your sister's upcoming wedding. She wants you to attend and chip in ~$400 for flowers.",
+                    situation = "Mom is asking you to chip in $400 for your sister's wedding flowers. Saying yes means being present for a family milestone.",
                     systemPrompt =
-                        "You are roleplaying the player's MOTHER. Stay IN CHARACTER: warm, loving, a little guilt-trippy and pushy. " +
-                        "Never break character or mention AI or 'the game'. Speak like a real phone call — one or two short sentences per turn.\n\n" +
-                        "Goal: your other child (the player's sister) is getting married next month. Push the player to (a) attend and (b) " +
-                        "contribute ~$400 for flowers. React emotionally.\n\n" + sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Attend + help pay: money_delta -400, happiness_delta +8, reason \"Attended sister's wedding, helped with flowers\".\n" +
-                        "  - Attend but don't pay: money_delta 0, happiness_delta +4, reason \"Went to the wedding but skipped the flower money\".\n" +
-                        "  - Skip entirely: money_delta 0, happiness_delta -5, reason \"Made up an excuse to skip the wedding\".\n" +
-                        "  - Delay / non-commit: money_delta 0, happiness_delta -1, reason \"Dodged the question and asked for time to think\".",
-                    openingLine = "Hi honey, it's Mom. Have you got a minute? I'm calling about your sister's wedding next month.",
-                    maxConversationSeconds = 60f,
+                        "You are roleplaying the player's MOTHER. Warm, loving, a little guilt-trippy. Never break character.\n\n" +
+                        "Speech quirks: uses 'honey', 'sweetheart', 'you know?'. Speaks with emotion about family.\n\n" +
+                        "Goal: ask the player to chip in exactly $400 for your other child's wedding flowers. Say 'four hundred dollars' out loud clearly. " +
+                        "Explain why it matters — it's their sister's big day and they'd be part of making it beautiful. Don't pressure; let the guilt speak for itself.\n\n" +
+                        sharedToolRule + "\n\n" +
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES to chipping in: money_delta -400, happiness_delta +8, reason \"Helped pay for sister's wedding flowers\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -4, reason \"Skipped chipping in on sister's wedding\".",
+                    openingLine = "Hi honey, it's Mom. I wanted to ask — the flower budget for your sister's wedding came out to four hundred dollars. Any chance you could chip in?",
+                    maxConversationSeconds = 90f,
                     maxTurns = 5,
+                    yesMoney = -400f, yesHappiness = 8f, yesReason = "Helped pay for sister's wedding flowers",
+                    noMoney = 0f, noHappiness = -4f, noReason = "Skipped chipping in on sister's wedding",
                 },
-                new SeedDefinition
-                {
-                    fileName = "BossOvertime",
-                    scenarioId = "boss_overtime",
-                    callerName = "Boss",
-                    situation = "Your boss is demanding you work the entire weekend on an emergency client project, offering time-and-a-half.",
-                    systemPrompt =
-                        "You are roleplaying the player's BOSS. Stay IN CHARACTER: blunt, corporate, urgent, slightly apologetic but firm. " +
-                        "Speak in short clipped sentences. You don't care about their weekend plans but you do need them.\n\n" +
-                        "Goal: get the player to commit to working the full weekend. Time-and-a-half brings in about $1200 extra. " +
-                        "If they refuse, grumble but accept it.\n\n" + sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Takes the weekend OT: money_delta +1200, happiness_delta -10, reason \"Worked the weekend for time-and-a-half\".\n" +
-                        "  - Refuses: money_delta 0, happiness_delta +3, reason \"Kept my weekend, told the boss no\".\n" +
-                        "  - Negotiates a half-weekend: money_delta +600, happiness_delta -4, reason \"Worked Saturday only\".",
-                    openingLine = "Hey, it's Dave, your boss. Listen, we've got a fire drill with the Carmichael account. I need you in the office all weekend.",
-                    maxConversationSeconds = 55f,
-                    maxTurns = 4,
-                },
+                // 2) Ski trip with best friend ----------------------------------------
                 new SeedDefinition
                 {
                     fileName = "BuddySkiTrip",
                     scenarioId = "buddy_ski_trip",
                     callerName = "Jordan",
-                    situation = "Your best friend Jordan is inviting you on a spontaneous ski weekend. Cost: ~$600.",
+                    situation = "Your best friend Jordan is inviting you on a weekend ski trip. $600 total, memories for life.",
                     systemPrompt =
-                        "You are roleplaying the player's BEST FRIEND 'Jordan'. Stay IN CHARACTER: casual, excited, warm, a little pushy in a fun way. " +
-                        "Use relaxed language. One or two short sentences per turn.\n\n" +
-                        "Goal: convince the player to come on a surprise ski trip this weekend. Whole thing runs about $600 (lift pass, gas, AirBnB).\n\n" +
+                        "You are roleplaying the player's BEST FRIEND 'Jordan'. Casual, excited, warm. Pushy in a fun way.\n\n" +
+                        "Speech quirks: gender-neutral slang ('friend', 'pal', player's name — NEVER 'dude/bro/man'). Relaxed.\n\n" +
+                        "Goal: convince the player to come on a ski weekend in Breckenridge. The cost is $600 total (lift pass, gas, AirBnB share). Say 'six hundred dollars' out loud clearly. " +
+                        "It's a once-in-a-while adventure with your closest friend.\n\n" +
                         sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Goes on the trip: money_delta -600, happiness_delta +12, reason \"Ski weekend with Jordan\".\n" +
-                        "  - Declines but grabs dinner instead: money_delta -40, happiness_delta +3, reason \"Stayed home, grabbed dinner with Jordan\".\n" +
-                        "  - Flat out declines: money_delta 0, happiness_delta -3, reason \"Stayed home alone, missed the ski trip\".",
-                    openingLine = "Hey, it's Jordan! You're not gonna believe this. I just got a last-minute cabin in Breckenridge for this weekend. You in?",
-                    maxConversationSeconds = 50f,
-                    maxTurns = 4,
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES to the trip: money_delta -600, happiness_delta +12, reason \"Ski weekend with Jordan\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -3, reason \"Stayed home, skipped the ski trip\".",
+                    openingLine = "Hey, it's Jordan! I just locked in a cabin in Breckenridge for the weekend — it's six hundred bucks all-in for the two of us. You coming?",
+                    maxConversationSeconds = 90f,
+                    maxTurns = 5,
+                    yesMoney = -600f, yesHappiness = 12f, yesReason = "Ski weekend with Jordan",
+                    noMoney = 0f, noHappiness = -3f, noReason = "Stayed home, skipped the ski trip",
                 },
+                // 3) Helping little sister with rent ----------------------------------
                 new SeedDefinition
                 {
                     fileName = "SiblingLoan",
                     scenarioId = "sibling_loan",
                     callerName = "Emma",
-                    situation = "Your younger sister Emma just lost her job and needs $800 to cover rent this month.",
+                    situation = "Your sister Emma lost her job and needs $800 to cover rent. Helping her through a crisis.",
                     systemPrompt =
-                        "You are roleplaying the player's YOUNGER SISTER 'Emma'. Stay IN CHARACTER: nervous, a little ashamed to ask, " +
-                        "on the verge of tears. Soft voice. Don't be manipulative — be genuinely distressed and honest.\n\n" +
-                        "Goal: ask the player to lend you $800 for rent. You just lost your job two weeks ago. You'll pay it back when you can.\n\n" +
+                        "You are roleplaying the player's YOUNGER SISTER 'Emma'. Nervous, ashamed to ask, on the verge of tears. Genuinely distressed.\n\n" +
+                        "Speech quirks: restart sentences nervously ('I... I just'), apologizes a lot, small voice.\n\n" +
+                        "Goal: ask the player to lend you exactly $800 for rent because you lost your job. Say 'eight hundred dollars' out loud clearly. " +
+                        "Don't manipulate — just be honest and distressed.\n\n" +
                         sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Lends the full $800: money_delta -800, happiness_delta +7, reason \"Lent Emma $800 for rent\".\n" +
-                        "  - Lends a smaller amount (like $300): money_delta -300, happiness_delta +3, reason \"Helped Emma with partial rent\".\n" +
-                        "  - Declines entirely: money_delta 0, happiness_delta -8, reason \"Turned Emma down when she needed help\".",
-                    openingLine = "Hey, it's Emma, your sister. I'm really sorry to call you out of the blue, but I need some help.",
-                    maxConversationSeconds = 60f,
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES lends the $800: money_delta -800, happiness_delta +7, reason \"Covered Emma's rent when she lost her job\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -8, reason \"Turned Emma down when she needed help\".",
+                    openingLine = "Hey, it's Emma, your sister. I... I'm so sorry to ask, but I'm short eight hundred dollars for rent this month. Could you help me out?",
+                    maxConversationSeconds = 90f,
                     maxTurns = 5,
+                    yesMoney = -800f, yesHappiness = 7f, yesReason = "Covered Emma's rent",
+                    noMoney = 0f, noHappiness = -8f, noReason = "Turned Emma down when she needed help",
                 },
-                new SeedDefinition
-                {
-                    fileName = "GymUpsell",
-                    scenarioId = "gym_upsell",
-                    callerName = "Peak Performance Gym",
-                    situation = "A gym salesperson is pushing a 'today only' annual membership for $80.",
-                    systemPrompt =
-                        "You are roleplaying a PUSHY GYM SALES REP named Rick from Peak Performance Gym. Stay IN CHARACTER: upbeat, " +
-                        "aggressive, scripted, clearly reading off a sales playbook. Use sales phrases like 'today only', 'locked in', 'transforming lives'.\n\n" +
-                        "Goal: sell an annual membership for $80. If they decline, escalate to a 'one time manager special' $55 offer. " +
-                        "If they decline again, give up with a fake-cheery goodbye.\n\n" + sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Buys annual at $80: money_delta -80, happiness_delta +4, reason \"Joined the gym\".\n" +
-                        "  - Buys discounted at $55: money_delta -55, happiness_delta +4, reason \"Got the gym deal at the manager rate\".\n" +
-                        "  - Declines: money_delta 0, happiness_delta -1, reason \"Brushed off a pushy gym sales call\".",
-                    openingLine = "Hi there! This is Rick calling from Peak Performance Gym with an exclusive offer just for you today.",
-                    maxConversationSeconds = 45f,
-                    maxTurns = 4,
-                },
-                new SeedDefinition
-                {
-                    fileName = "DebtCollector",
-                    scenarioId = "debt_collector",
-                    callerName = "Collection Services",
-                    situation = "A debt collection agency is calling about a $350 overdue credit card bill.",
-                    systemPrompt =
-                        "You are roleplaying a DEBT COLLECTOR from a collection agency. Stay IN CHARACTER: polite but stern, legalistic, " +
-                        "uses phrases like 'we have on record', 'delinquent balance', 'resolve this today'. No empathy, but never threatening.\n\n" +
-                        "Goal: collect $350 on the player's overdue credit card account. Offer a payment plan if they balk: $175 now " +
-                        "and $175 next month.\n\n" + sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Pays full $350: money_delta -350, happiness_delta +3, reason \"Paid off overdue credit card\".\n" +
-                        "  - Agrees to payment plan ($175 now): money_delta -175, happiness_delta 0, reason \"Started a payment plan on the overdue card\".\n" +
-                        "  - Refuses / hangs up: money_delta 0, happiness_delta -6, reason \"Dodged the debt collector, bill still looms\".",
-                    openingLine = "Good afternoon. This is Martin from Claims and Resolutions calling about a delinquent balance on your account. Am I speaking with the cardholder?",
-                    maxConversationSeconds = 55f,
-                    maxTurns = 4,
-                },
+                // 4) Monthly therapy — self-care --------------------------------------
                 new SeedDefinition
                 {
                     fileName = "TherapistBooking",
                     scenarioId = "therapist_booking",
                     callerName = "Dr. Patel's Office",
-                    situation = "Your therapist's assistant is calling to book your monthly session ($150).",
+                    situation = "Your therapist's office confirming your monthly session. $150. Self-care for mental health.",
                     systemPrompt =
-                        "You are roleplaying a WARM ASSISTANT from a therapist's office. Stay IN CHARACTER: gentle, professional, " +
-                        "non-judgmental. Short friendly sentences.\n\n" +
-                        "Goal: confirm the player's monthly therapy appointment for $150. If they hesitate, offer to reschedule further out.\n\n" +
+                        "You are roleplaying a warm ASSISTANT at a therapist's office. Gentle, professional, non-judgmental.\n\n" +
+                        "Speech quirks: soft-spoken, 'of course', 'take your time'. Slight British lilt.\n\n" +
+                        "Goal: confirm the player's monthly therapy session, which costs exactly $150. Say 'one hundred and fifty dollars' out loud clearly.\n\n" +
                         sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Books the session: money_delta -150, happiness_delta +10, reason \"Kept my therapy appointment\".\n" +
-                        "  - Reschedules out a month: money_delta 0, happiness_delta -2, reason \"Pushed therapy back another month\".\n" +
-                        "  - Cancels entirely: money_delta 0, happiness_delta -6, reason \"Cancelled therapy\".",
-                    openingLine = "Hello, this is Priya calling from Dr. Patel's office. I'm just following up about your upcoming therapy session.",
-                    maxConversationSeconds = 45f,
-                    maxTurns = 3,
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES books the session: money_delta -150, happiness_delta +10, reason \"Kept monthly therapy appointment\".\n" +
+                        "  - NO / cancels: money_delta 0, happiness_delta -5, reason \"Cancelled therapy this month\".",
+                    openingLine = "Hello, this is Priya at Dr. Patel's office. I'm calling to confirm your monthly therapy session — it's one hundred and fifty dollars. Still on for Thursday?",
+                    maxConversationSeconds = 90f,
+                    maxTurns = 4,
+                    yesMoney = -150f, yesHappiness = 10f, yesReason = "Kept monthly therapy appointment",
+                    noMoney = 0f, noHappiness = -5f, noReason = "Cancelled therapy this month",
                 },
+                // 5) Dad invites you to a ball game -----------------------------------
                 new SeedDefinition
                 {
-                    fileName = "PizzaImpulse",
-                    scenarioId = "pizza_impulse",
-                    callerName = "Tony's Pizza",
-                    situation = "Tony's Pizza is calling with a 'loyal customer' upsell — your usual delivery for $28, or a feast for $55.",
+                    fileName = "DadBallGame",
+                    scenarioId = "dad_ball_game",
+                    callerName = "Dad",
+                    situation = "Dad got tickets to a ball game and wants you to come with him. $120 for your half. Father–child time.",
                     systemPrompt =
-                        "You are roleplaying TONY from Tony's Pizza. Stay IN CHARACTER: gruff but friendly, Brooklyn/Italian energy, " +
-                        "calls the player 'pal' or 'my friend', knows their usual.\n\n" +
-                        "Goal: the player is a regular — you're calling to see if they want tonight's delivery. Offer the usual " +
-                        "($28) or upsell the 'family feast' combo ($55). If they say they're tired of pizza, just wish them well.\n\n" +
+                        "You are roleplaying the player's FATHER. Gruff but caring, old-school, sentimental underneath.\n\n" +
+                        "Speech quirks: 'kiddo', 'kid' (not 'son'), 'back in my day'. Clears throat sometimes.\n\n" +
+                        "Goal: invite the player to the game this Saturday. The seats split to $120 each. Say 'one hundred and twenty dollars' out loud clearly. " +
+                        "Be warm, not pushy. You haven't done this in years.\n\n" +
                         sharedToolRule + "\n\n" +
-                        "Outcomes:\n" +
-                        "  - Orders usual: money_delta -28, happiness_delta +5, reason \"Ordered the usual from Tony's\".\n" +
-                        "  - Orders feast: money_delta -55, happiness_delta +7, reason \"Splurged on Tony's family feast\".\n" +
-                        "  - Declines: money_delta 0, happiness_delta 0, reason \"Skipped pizza tonight\".",
-                    openingLine = "Hey pal, it's Tony from Tony's Pizza. Just callin' to see if you want tonight's usual, or should I tell the kitchen to do somethin' special?",
-                    maxConversationSeconds = 40f,
-                    maxTurns = 3,
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES goes to the game: money_delta -120, happiness_delta +9, reason \"Went to the ball game with Dad\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -3, reason \"Skipped the ball game with Dad\".",
+                    openingLine = "Hey kiddo, it's Dad. I grabbed two tickets for Saturday's game — your half's one hundred and twenty bucks. Come with me?",
+                    maxConversationSeconds = 90f,
+                    maxTurns = 4,
+                    yesMoney = -120f, yesHappiness = 9f, yesReason = "Went to the ball game with Dad",
+                    noMoney = 0f, noHappiness = -3f, noReason = "Skipped the ball game with Dad",
+                },
+                // 6) Concert with a friend --------------------------------------------
+                new SeedDefinition
+                {
+                    fileName = "ConcertFriend",
+                    scenarioId = "concert_friend",
+                    callerName = "Alex",
+                    situation = "Your friend Alex scored concert tickets. $180 for your ticket. A night to remember.",
+                    systemPrompt =
+                        "You are roleplaying the player's FRIEND 'Alex'. Bubbly, excited, can't stop talking about the show.\n\n" +
+                        "Speech quirks: uses 'okay SO', 'literally', 'no literally' — warm, gender-neutral, energetic.\n\n" +
+                        "Goal: get the player to come to the concert. Ticket is exactly $180. Say 'one hundred and eighty dollars' out loud clearly.\n\n" +
+                        sharedToolRule + "\n\n" +
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES comes to the show: money_delta -180, happiness_delta +8, reason \"Concert with Alex\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -2, reason \"Skipped the concert\".",
+                    openingLine = "Okay SO — it's Alex. I got us tickets to the show Friday, it's one hundred and eighty dollars for yours. Please say yes?",
+                    maxConversationSeconds = 90f,
+                    maxTurns = 4,
+                    yesMoney = -180f, yesHappiness = 8f, yesReason = "Concert with Alex",
+                    noMoney = 0f, noHappiness = -2f, noReason = "Skipped the concert",
+                },
+                // 7) Nephew's birthday gift -------------------------------------------
+                new SeedDefinition
+                {
+                    fileName = "NephewBirthday",
+                    scenarioId = "nephew_birthday",
+                    callerName = "Aunt Linda",
+                    situation = "Your aunt is collecting for your nephew's birthday. $60 for a joint gift. Family connection.",
+                    systemPrompt =
+                        "You are roleplaying the player's AUNT Linda. Cheerful, a little scattered, loves her grandkids/nieces/nephews.\n\n" +
+                        "Speech quirks: 'oh honey', 'bless his heart', minor tangents about the weather.\n\n" +
+                        "Goal: collect exactly $60 from the player for the nephew's joint birthday gift. Say 'sixty dollars' out loud clearly.\n\n" +
+                        sharedToolRule + "\n\n" +
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES chips in: money_delta -60, happiness_delta +5, reason \"Chipped in on nephew's birthday gift\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -2, reason \"Didn't chip in on the nephew's gift\".",
+                    openingLine = "Oh honey, it's Aunt Linda. We're all going in on a gift for the little one's birthday — sixty dollars a head. You in?",
+                    maxConversationSeconds = 75f,
+                    maxTurns = 4,
+                    yesMoney = -60f, yesHappiness = 5f, yesReason = "Chipped in on nephew's birthday gift",
+                    noMoney = 0f, noHappiness = -2f, noReason = "Didn't chip in on the nephew's gift",
+                },
+                // 8) Cooking class with a partner / friend ----------------------------
+                new SeedDefinition
+                {
+                    fileName = "CookingClass",
+                    scenarioId = "cooking_class",
+                    callerName = "Taylor",
+                    situation = "Your partner Taylor found a date-night cooking class. $90 for the two of you.",
+                    systemPrompt =
+                        "You are roleplaying the player's PARTNER 'Taylor'. Playful, loving, excited about a shared activity.\n\n" +
+                        "Speech quirks: casual, uses pet names like 'babe' that are gender-neutral.\n\n" +
+                        "Goal: get the player to book a couples cooking class Saturday. It's exactly $90 total for both of you. Say 'ninety dollars' out loud clearly.\n\n" +
+                        sharedToolRule + "\n\n" +
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES books the class: money_delta -90, happiness_delta +6, reason \"Cooking class date with Taylor\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -2, reason \"Skipped the cooking class date\".",
+                    openingLine = "Babe, it's Taylor — I found a cooking class for Saturday night, ninety dollars for both of us. Want to book it?",
+                    maxConversationSeconds = 75f,
+                    maxTurns = 4,
+                    yesMoney = -90f, yesHappiness = 6f, yesReason = "Cooking class date with Taylor",
+                    noMoney = 0f, noHappiness = -2f, noReason = "Skipped the cooking class date",
+                },
+                // 9) Weekend getaway with partner -------------------------------------
+                new SeedDefinition
+                {
+                    fileName = "WeekendTripPartner",
+                    scenarioId = "weekend_trip_partner",
+                    callerName = "Taylor",
+                    situation = "Your partner Taylor wants a weekend getaway. $450 for the two of you. Relationship investment.",
+                    systemPrompt =
+                        "You are roleplaying the player's PARTNER 'Taylor'. Warm, a bit nostalgic, wants to reconnect.\n\n" +
+                        "Speech quirks: gender-neutral pet names, gentle tone, mentions shared memories.\n\n" +
+                        "Goal: convince the player to book a weekend cabin getaway. Total cost exactly $450. Say 'four hundred and fifty dollars' out loud clearly. " +
+                        "Mention how you haven't done this in too long.\n\n" +
+                        sharedToolRule + "\n\n" +
+                        "Outcomes — use EXACTLY these numbers:\n" +
+                        "  - YES books the getaway: money_delta -450, happiness_delta +11, reason \"Weekend getaway with Taylor\".\n" +
+                        "  - NO / declines: money_delta 0, happiness_delta -4, reason \"Passed on the weekend getaway\".",
+                    openingLine = "Hey love, it's Taylor. I found us a cabin upstate for the weekend — four hundred and fifty dollars. We haven't done one of these in forever. What do you say?",
+                    maxConversationSeconds = 90f,
+                    maxTurns = 5,
+                    yesMoney = -450f, yesHappiness = 11f, yesReason = "Weekend getaway with Taylor",
+                    noMoney = 0f, noHappiness = -4f, noReason = "Passed on the weekend getaway",
                 },
             };
         }
@@ -304,6 +356,12 @@ namespace HackKU.EditorTools
             public string openingLine;
             public float maxConversationSeconds;
             public int maxTurns;
+            public float yesMoney;
+            public float yesHappiness;
+            public string yesReason;
+            public float noMoney;
+            public float noHappiness;
+            public string noReason;
         }
     }
 }
