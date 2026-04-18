@@ -17,9 +17,9 @@ MonoBehaviour:
     and the espresso machine. The money flows \u2014 as long as you keep grinding.
     The joy? That's on backorder."
   portrait: {fileID: 0}
-  startingMoney: 8200
+  startingMoney: 4000
   startingHappiness: 34
-  yearlyIncome: 76000
-  yearlyExpenses: 18500
+  yearlyIncome: 20000
+  yearlyExpenses: 6000
   yearlyHappinessRegen: -2
   gimmickTag: Golden Handcuffs

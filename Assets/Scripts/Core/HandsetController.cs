@@ -59,6 +59,9 @@ namespace HackKU.Core
                 rb.isKinematic = true;
                 rb.useGravity = false;
             }
+            // Only firing NotifyHandsetLifted on cradle pickup — that's the exclusive
+            // trigger for incoming-call answer / dial-out. Picking up a fallen handset
+            // mid-call just lets the player hold the earpiece again; audio continues.
             if (IsOnCradle)
             {
                 IsOnCradle = false;
@@ -126,28 +129,28 @@ namespace HackKU.Core
         public void DockToCradle()
         {
             StopDockAnim();
+
+            // IMPORTANT: flip the cradle state and notify the phone IMMEDIATELY, before the
+            // smooth-snap animation starts. If we wait until the end of the animation, the
+            // player can grab the handset again within that window and the call never ends.
+            if (rb != null) { rb.isKinematic = true; rb.useGravity = false; rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
+            bool wasOnCradle = IsOnCradle;
+            IsOnCradle = true;
+            IsFallen = false;
+
             if (cradleSpace == null)
             {
                 transform.localPosition = restLocalPos;
                 transform.localRotation = restLocalRot;
-                IsOnCradle = true;
-                IsFallen = false;
-                if (rb != null) { rb.isKinematic = true; rb.useGravity = false; rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
-                if (Phone != null) Phone.NotifyHandsetPlacedBack();
+                if (!wasOnCradle && Phone != null) Phone.NotifyHandsetPlacedBack();
                 return;
             }
+            if (!wasOnCradle && Phone != null) Phone.NotifyHandsetPlacedBack();
             dockAnim = StartCoroutine(DockAnimation());
         }
 
         IEnumerator DockAnimation()
         {
-            if (rb != null)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                rb.isKinematic = true;
-                rb.useGravity = false;
-            }
             Vector3 startPos = transform.localPosition;
             Quaternion startRot = transform.localRotation;
             float t = 0f;
@@ -162,10 +165,9 @@ namespace HackKU.Core
             }
             transform.localPosition = restLocalPos;
             transform.localRotation = restLocalRot;
-            IsOnCradle = true;
-            IsFallen = false;
             dockAnim = null;
-            if (Phone != null) Phone.NotifyHandsetPlacedBack();
+            // NotifyHandsetPlacedBack was already fired at the START of DockToCradle so the
+            // call ends instantly — don't fire it again here.
         }
 
         void StopDockAnim()

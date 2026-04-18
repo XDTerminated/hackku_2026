@@ -34,6 +34,19 @@ namespace HackKU.AI
         public event Action<CallScenario> OnCallEnded;
 
         public bool IsCallActive { get; private set; }
+
+        [Tooltip("Maximum real-time seconds a single call can stay active before being forcibly aborted. Safety net against stuck coroutines or non-terminating LLM flows.")]
+        [SerializeField] private float maxCallDurationSeconds = 90f;
+        private float _callStartTime;
+
+        private void Update()
+        {
+            if (IsCallActive && Time.unscaledTime - _callStartTime > maxCallDurationSeconds)
+            {
+                Debug.LogWarning("[CallController] maxCallDurationSeconds exceeded — forcing call end.");
+                AbortActiveCall("max duration");
+            }
+        }
         public CallScenario ActiveScenario => _activeScenario;
 
         private CallScenario _activeScenario;
@@ -106,6 +119,7 @@ namespace HackKU.AI
             HookPhoneEvents();
             _activeScenario = s;
             IsCallActive = true;
+            _callStartTime = Time.unscaledTime;
 
             // Mic is pre-warmed by MicrophoneCapture.Start() at game boot; this call is
             // a safety net in case pre-warm was disabled or failed (e.g. permission denied).
@@ -223,8 +237,17 @@ namespace HackKU.AI
                     continue;
                 }
 
-                if (verboseLogging) Debug.Log($"[CallController] Player said: {userText}");
+                if (verboseLogging) Debug.Log($"[CallController] Turn {turn} — player said: {userText}");
                 _session.AppendUser(userText);
+
+                // After turn 2, if the LLM still hasn't emitted apply_outcome, push it hard to resolve.
+                if (turn >= 2)
+                {
+                    _session.AppendUser(
+                        "(SYSTEM: The player has spoken enough. Call the 'apply_outcome' function NOW with your best " +
+                        "interpretation of their commitment from the latest message, then speak one short goodbye line. " +
+                        "Do not ask further questions.)");
+                }
 
                 // 4) Ask the LLM.
                 var chatTask = SafeChat(ct);
@@ -447,6 +470,22 @@ namespace HackKU.AI
                 return;
             }
             stats.ApplyDelta(outcome.moneyDelta, outcome.happinessDelta, outcome.reason);
+
+            // Fire HUD toasts so the player sees the result of the call on the top-right.
+            string label = string.IsNullOrWhiteSpace(outcome.reason) ? (_activeScenario != null ? _activeScenario.callerName : "Call") : outcome.reason;
+            if (Mathf.Abs(outcome.moneyDelta) >= 0.5f)
+            {
+                string sign = outcome.moneyDelta > 0f ? "+$" : "-$";
+                string money = sign + Mathf.RoundToInt(Mathf.Abs(outcome.moneyDelta));
+                HackKU.Core.ToastHUD.Show(money, label, outcome.moneyDelta > 0f ? HackKU.Core.ToastKind.Income : HackKU.Core.ToastKind.Bill);
+            }
+            if (Mathf.Abs(outcome.happinessDelta) >= 0.5f)
+            {
+                string sign = outcome.happinessDelta > 0f ? "+" : "-";
+                string hap = sign + Mathf.RoundToInt(Mathf.Abs(outcome.happinessDelta)) + "%";
+                HackKU.Core.ToastHUD.Show(hap, "Happiness — " + label, outcome.happinessDelta > 0f ? HackKU.Core.ToastKind.HappinessUp : HackKU.Core.ToastKind.HappinessDown);
+            }
+
             if (verboseLogging)
                 Debug.Log($"[CallController] Applied outcome: money {outcome.moneyDelta:+0.##;-0.##}, happiness {outcome.happinessDelta:+0.##;-0.##} — {outcome.reason}");
         }
@@ -500,6 +539,14 @@ namespace HackKU.AI
             if (mic != null)
             {
                 try { mic.DisposeRecording(); } catch { /* ignore */ }
+            }
+
+            if (verboseLogging) Debug.Log("[CallController] FinishCall — IsCallActive=false, next call can be scheduled.");
+
+            // Show a "call ended" toast so the player has unambiguous feedback that the line closed.
+            if (finished != null)
+            {
+                HackKU.Core.ToastHUD.Show("✓", "Call ended — " + finished.callerName, HackKU.Core.ToastKind.Info);
             }
 
             if (finished != null) OnCallEnded?.Invoke(finished);

@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efcba49b76db1b641910b060d9c8d962, type: 3}
+  m_Name: fancy
+  m_EditorClassIdentifier: 
+  itemId: fancy
+  displayName: Gourmet
+  price: 75
+  hungerRestore: 60
+  accentColor: {r: 0.85, g: 0.65, b: 0.2, a: 1}
+  prefab: {fileID: 2409987977145660893, guid: 112bf76b09e101e4c988b430cb47ffad, type: 3}

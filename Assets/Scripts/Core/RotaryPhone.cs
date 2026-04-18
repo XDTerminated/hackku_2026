@@ -85,12 +85,13 @@ namespace HackKU.Core
         }
 
         // Called by HandsetController when the player drops the handset somewhere that isn't the cradle.
+        // We intentionally do NOT end the call here — the audio source is on the handset, so the player
+        // can keep hearing the caller even if the handset is lying on the floor. The call only ends when
+        // the handset is placed back on the cradle (NotifyHandsetPlacedBack).
         public void NotifyHandsetDropped()
         {
             if (IsRinging) StopRinging();
             OnHandsetDropped?.Invoke();
-            // Treat a drop as a hangup too so the active call cleans up.
-            OnHungUp?.Invoke();
         }
     }
 }

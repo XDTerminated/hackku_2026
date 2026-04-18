@@ -75,13 +75,8 @@ namespace HackKU.Core
 
         private void HandleYearTick(int year)
         {
-            if (activeProfile == null)
-            {
-                return;
-            }
-
-            float net = activeProfile.yearlyIncome - activeProfile.yearlyExpenses;
-            ApplyDelta(net, activeProfile.yearlyHappinessRegen, "yearly");
+            // Monthly paychecks / bills / happiness drift now handled by FinanceScheduler
+            // so it can emit individual toasts. StatsManager is purely a store of state.
         }
 
         private void RaiseStatsChanged()

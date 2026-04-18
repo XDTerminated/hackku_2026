@@ -19,7 +19,7 @@ MonoBehaviour:
   portrait: {fileID: 0}
   startingMoney: 1500
   startingHappiness: 74
-  yearlyIncome: 32000
-  yearlyExpenses: 20000
+  yearlyIncome: 12000
+  yearlyExpenses: 5000
   yearlyHappinessRegen: 3
   gimmickTag: Zen & Tips

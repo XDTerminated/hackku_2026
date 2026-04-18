@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efcba49b76db1b641910b060d9c8d962, type: 3}
+  m_Name: groceries
+  m_EditorClassIdentifier: 
+  itemId: groceries
+  displayName: Groceries
+  price: 45
+  hungerRestore: 40
+  accentColor: {r: 0.45, g: 0.7, b: 0.35, a: 1}
+  prefab: {fileID: 3767290014169508074, guid: ee7b453cc5e6c8341ab4325f91c62538, type: 3}

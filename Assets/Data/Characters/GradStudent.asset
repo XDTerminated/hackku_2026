@@ -17,9 +17,9 @@ MonoBehaviour:
     dissertation is always 'almost done.' Still \u2014 the library is free, friends
     are close, and the future feels possible."
   portrait: {fileID: 0}
-  startingMoney: -1200
+  startingMoney: -800
   startingHappiness: 55
-  yearlyIncome: 24500
-  yearlyExpenses: 19000
+  yearlyIncome: 8000
+  yearlyExpenses: 4000
   yearlyHappinessRegen: 1
   gimmickTag: Ramen & Dreams

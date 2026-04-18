@@ -1,0 +1,27 @@
+XR Origin (XR Rig)  parent=(root)
+  localPos=(0.000, 0.000, -2.000)  localRot=(0.0, 0.0, 0.0)  localScale=(1.000, 1.000, 1.000)
+  worldPos=(0.000, 0.000, -2.000)  worldRot=(0.0, 0.0, 0.0)
+Camera Offset  parent=XR Origin (XR Rig)
+  localPos=(0.000, 1.361, 0.000)  localRot=(0.0, 0.0, 0.0)  localScale=(1.000, 1.000, 1.000)
+  worldPos=(0.000, 1.361, -2.000)  worldRot=(0.0, 0.0, 0.0)
+Main Camera  parent=Camera Offset
+  localPos=(0.000, 0.000, 0.000)  localRot=(0.0, 0.0, 0.0)  localScale=(1.000, 1.000, 1.000)
+  worldPos=(0.000, 1.361, -2.000)  worldRot=(0.0, 0.0, 0.0)
+Left Controller  parent=Camera Offset
+  localPos=(0.000, 0.000, 0.000)  localRot=(0.0, 0.0, 0.0)  localScale=(1.000, 1.000, 1.000)
+  worldPos=(0.000, 1.361, -2.000)  worldRot=(0.0, 0.0, 0.0)
+Right Controller  parent=Camera Offset
+  localPos=(0.000, 0.000, 0.000)  localRot=(0.0, 0.0, 0.0)  localScale=(1.000, 1.000, 1.000)
+  worldPos=(0.000, 1.361, -2.000)  worldRot=(0.0, 0.0, 0.0)
+Left Controller Visual  parent=Left Controller
+  localPos=(0.000, 0.000, 0.000)  localRot=(0.0, 0.0, 0.0)  localScale=(1.000, 1.000, 1.000)
+  worldPos=(0.000, 1.361, -2.000)  worldRot=(0.0, 0.0, 0.0)
+Right Controller Visual  parent=Right Controller
+  localPos=(0.000, 0.000, 0.000)  localRot=(0.0, 0.0, 0.0)  localScale=(-1.000, 1.000, 1.000)
+  worldPos=(0.000, 1.361, -2.000)  worldRot=(0.0, 0.0, 0.0)
+WristCanvas  parent=Left Controller
+  localPos=(0.000, 0.060, -0.080)  localRot=(0.0, 0.0, 0.0)  localScale=(0.001, 0.001, 0.001)
+  worldPos=(0.000, 1.421, -2.080)  worldRot=(0.0, 0.0, 0.0)
+ToastHUD  parent=Main Camera
+  localPos=(0.320, 0.220, 0.900)  localRot=(0.0, 0.0, 0.0)  localScale=(0.001, 0.001, 0.001)
+  worldPos=(0.320, 1.581, -1.100)  worldRot=(0.0, 0.0, 0.0)

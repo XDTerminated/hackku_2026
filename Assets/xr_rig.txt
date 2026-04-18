@@ -1,0 +1,72 @@
+[RigInspector]
+XR Origin (XR Rig) [XROrigin] [CharacterController] [InputActionManager] [XRInputModalityManager] [XRGazeAssistance] [SimpleSmoothTurn] [HungerMovementDebuff]
+  Camera Offset
+    Main Camera [Camera] [AudioListener] [TrackedPoseDriver]
+      ToastHUD [Canvas] [CanvasScaler] [GraphicRaycaster] [ToastHUD]
+        Stack
+    Gaze Interactor [XRGazeInteractor] [GazeInputManager] [TrackedPoseDriver]
+    Gaze Stabilized [XRTransformStabilizer]
+      Gaze Stabilized Attach
+    Left Controller [ControllerInputActionManager] [XRInteractionGroup] [HapticImpulsePlayer] [TrackedPoseDriver]
+      Poke Interactor [XRPokeInteractor] [SimpleHapticFeedback]
+        Poke Point
+          Pinch_Pointer_LOD0 [SkinnedMeshRenderer]
+        Poke Point Affordances
+          Poke [XRInteractorAffordanceStateProvider] [MaterialPropertyBlockHelper] [ColorMaterialPropertyAffordanceReceiver]
+          NearFar [XRInteractorAffordanceStateProvider] [MaterialPropertyBlockHelper] [ColorMaterialPropertyAffordanceReceiver]
+      Near-Far Interactor [NearFarInteractor] [InteractionAttachController] [SphereInteractionCaster] [CurveInteractionCaster] [SimpleHapticFeedback]
+        LineVisual [CurveVisualController] [LineRenderer] [SortingGroup]
+      Teleport Interactor [XRRayInteractor] [LineRenderer] [XRInteractorLineVisual] [SortingGroup] [SimpleHapticFeedback]
+      Left Controller Visual [ControllerAnimator]
+        UniversalController
+          Bumper [MeshFilter] [MeshRenderer]
+          Button_Home [MeshFilter] [MeshRenderer]
+          Controller_Base [MeshFilter] [MeshRenderer]
+          TouchPad [MeshFilter] [MeshRenderer]
+          Trigger [MeshFilter] [MeshRenderer]
+          XRController_Thumbstick_Buttons
+            Button_A [MeshFilter] [MeshRenderer]
+            Button_B [MeshFilter] [MeshRenderer]
+            ThumbStick [MeshFilter] [MeshRenderer]
+            ThumbStick_Base [MeshFilter] [MeshRenderer]
+      WristCanvas [Canvas] [CanvasScaler] [GraphicRaycaster] [WristWatchUI] [TrackedDeviceGraphicRaycaster] [WristBillboardFace]
+        Background [CanvasRenderer] [Image]
+        Year [CanvasRenderer] [Text]
+        Money [CanvasRenderer] [Text]
+        Happiness [CanvasRenderer] [Text]
+        Hunger [CanvasRenderer] [Text]
+    Left Controller Teleport Stabilized Origin [XRTransformStabilizer]
+      Left Controller Stabilized Attach
+    Right Controller [ControllerInputActionManager] [XRInteractionGroup] [HapticImpulsePlayer] [TrackedPoseDriver]
+      Poke Interactor [XRPokeInteractor] [SimpleHapticFeedback]
+        Poke Point
+          Pinch_Pointer_LOD0 [SkinnedMeshRenderer]
+        Poke Point Affordances
+          Poke [XRInteractorAffordanceStateProvider] [MaterialPropertyBlockHelper] [ColorMaterialPropertyAffordanceReceiver]
+          NearFar [XRInteractorAffordanceStateProvider] [MaterialPropertyBlockHelper] [ColorMaterialPropertyAffordanceReceiver]
+      Near-Far Interactor [NearFarInteractor] [InteractionAttachController] [SphereInteractionCaster] [CurveInteractionCaster] [SimpleHapticFeedback]
+        LineVisual [CurveVisualController] [LineRenderer] [SortingGroup]
+      Teleport Interactor [XRRayInteractor] [LineRenderer] [XRInteractorLineVisual] [SortingGroup] [SimpleHapticFeedback]
+      Right Controller Visual [ControllerAnimator]
+        UniversalController
+          Bumper [MeshFilter] [MeshRenderer]
+          Button_Home [MeshFilter] [MeshRenderer]
+          Controller_Base [MeshFilter] [MeshRenderer]
+          TouchPad [MeshFilter] [MeshRenderer]
+          Trigger [MeshFilter] [MeshRenderer]
+          XRController_Thumbstick_Buttons
+            Button_A [MeshFilter] [MeshRenderer]
+            Button_B [MeshFilter] [MeshRenderer]
+            ThumbStick [MeshFilter] [MeshRenderer]
+            ThumbStick_Base [MeshFilter] [MeshRenderer]
+    Right Controller Teleport Stabilized Origin [XRTransformStabilizer]
+      Right Controller Stabilized Attach
+  Locomotion [LocomotionMediator] [XRBodyTransformer] [ContinuousMoveProvider] [SnapTurnProvider] [TeleportationProvider]
+    Turn [SnapTurnProvider] [ContinuousTurnProvider]
+    Move [DynamicMoveProvider]
+    Grab Move [GrabMoveProvider] [GrabMoveProvider] [TwoHandedGrabMoveProvider]
+    Teleportation [TeleportationProvider]
+    Climb [ClimbProvider]
+      Climb Teleport [ClimbTeleportInteractor] [ClimbTeleportDestinationIndicator]
+    Gravity [GravityProvider]
+    Jump [JumpProvider]

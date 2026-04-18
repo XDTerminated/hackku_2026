@@ -6,7 +6,6 @@ namespace HackKU.AI
 {
     // Time-based call scheduler. Fires the next incoming call a random interval
     // after the previous one ends (or after `firstCallDelay` from enable).
-    // Default cadence aims at ~1-3 calls per in-game year (45s = 1 year).
     public class CallDirector : MonoBehaviour
     {
         [SerializeField] CallController callController;
@@ -14,54 +13,77 @@ namespace HackKU.AI
         [SerializeField] CallScenario[] scenarios;
 
         [Header("Cadence (real seconds)")]
-        [Tooltip("Shortest gap between calls (after the previous one ends).")]
-        [SerializeField] float minGapSeconds = 10f;
+        [SerializeField] float minGapSeconds = 3f;
+        [SerializeField] float maxGapSeconds = 10f;
+        [SerializeField] float firstCallDelay = 5f;
 
-        [Tooltip("Longest gap between calls.")]
-        [SerializeField] float maxGapSeconds = 25f;
-
-        [Tooltip("Delay before the very first call after Enable.")]
-        [SerializeField] float firstCallDelay = 8f;
+        [SerializeField] bool verboseLogging = true;
 
         float nextCallTime = -1f;
         bool wasActiveLastFrame;
-        readonly Queue<int> scenarioOrder = new();
+        float lastGateLogTime = -10f;
+        readonly Queue<int> scenarioOrder = new Queue<int>();
 
         void OnEnable()
         {
             ScheduleFromNow(firstCallDelay);
+            if (verboseLogging) Debug.Log("[CallDirector] Enabled, first call in " + firstCallDelay + "s");
         }
 
         void Update()
         {
             if (callController == null || scenarios == null || scenarios.Length == 0) return;
 
-            if (callController.IsCallActive)
+            bool active = callController.IsCallActive;
+
+            // Detect state transitions.
+            if (active != wasActiveLastFrame)
             {
-                wasActiveLastFrame = true;
+                wasActiveLastFrame = active;
+                if (active)
+                {
+                    // Just started.
+                    nextCallTime = float.MaxValue;
+                }
+                else
+                {
+                    // Just ended — queue next call.
+                    float gap = Random.Range(minGapSeconds, maxGapSeconds);
+                    ScheduleFromNow(gap);
+                    if (verboseLogging) Debug.Log("[CallDirector] Call ended. Next call in " + gap.ToString("F1") + "s.");
+                }
                 return;
             }
 
-            if (wasActiveLastFrame)
+            if (active) return;
+
+            // Bulletproof: if somehow nextCallTime is stuck at MaxValue but no call is active,
+            // reset to a sane near-future value so we don't hang forever.
+            if (nextCallTime > Time.time + maxGapSeconds + 5f)
             {
-                // Call just ended — queue the next one.
-                wasActiveLastFrame = false;
                 ScheduleFromNow(Random.Range(minGapSeconds, maxGapSeconds));
-                return;
+                if (verboseLogging) Debug.LogWarning("[CallDirector] nextCallTime was unreachable; resetting.");
             }
 
             if (Time.time < nextCallTime) return;
 
-            // Gate: only ring when the handset is actually on the cradle and ready to be answered.
-            // If the player dropped it on the floor, the phone can't ring until it's put back.
             if (phone == null)
             {
                 phone = callController != null ? callController.GetComponentInChildren<RotaryPhone>() : null;
                 if (phone == null) phone = Object.FindFirstObjectByType<RotaryPhone>();
             }
+
             if (phone != null && !phone.CanReceiveCall)
             {
-                ScheduleFromNow(2f); // check again soon
+                ScheduleFromNow(2f);
+                if (verboseLogging && Time.time - lastGateLogTime > 3f)
+                {
+                    lastGateLogTime = Time.time;
+                    Debug.Log("[CallDirector] Phone not ready. IsOnCradle=" + phone.IsHandsetOnCradle +
+                              " IsRinging=" + phone.IsRinging +
+                              " IsHeld=" + (phone.handset != null && phone.handset.IsHeld) +
+                              ". Retrying in 2s.");
+                }
                 return;
             }
 
@@ -71,8 +93,8 @@ namespace HackKU.AI
                 ScheduleFromNow(minGapSeconds);
                 return;
             }
+            if (verboseLogging) Debug.Log("[CallDirector] Starting call: " + scenario.callerName);
             callController.BeginIncomingCall(scenario);
-            // nextCallTime stays stale until this call ends; the `wasActiveLastFrame` branch handles rescheduling.
             nextCallTime = float.MaxValue;
         }
 
@@ -84,18 +106,49 @@ namespace HackKU.AI
         CallScenario PickScenario()
         {
             if (scenarios.Length == 0) return null;
-            if (scenarioOrder.Count == 0)
+
+            // Try up to scenarios.Length * 2 dequeues to find an eligible one.
+            // Refills and shuffles whenever the queue is empty.
+            int tries = scenarios.Length * 2;
+            while (tries-- > 0)
             {
-                var indices = new List<int>();
-                for (int i = 0; i < scenarios.Length; i++) if (scenarios[i] != null) indices.Add(i);
-                for (int i = indices.Count - 1; i > 0; i--)
-                {
-                    int j = Random.Range(0, i + 1);
-                    (indices[i], indices[j]) = (indices[j], indices[i]);
-                }
-                foreach (var idx in indices) scenarioOrder.Enqueue(idx);
+                if (scenarioOrder.Count == 0) RefillQueue();
+                if (scenarioOrder.Count == 0) return null;
+
+                int idx = scenarioOrder.Dequeue();
+                var s = scenarios[idx];
+                if (IsEligible(s)) return s;
+                if (verboseLogging) Debug.Log("[CallDirector] Skipped ineligible scenario: " + (s != null ? s.scenarioId : "(null)"));
             }
-            return scenarioOrder.Count > 0 ? scenarios[scenarioOrder.Dequeue()] : null;
+            return null;
+        }
+
+        void RefillQueue()
+        {
+            var indices = new List<int>();
+            for (int i = 0; i < scenarios.Length; i++) if (scenarios[i] != null) indices.Add(i);
+            for (int i = indices.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (indices[i], indices[j]) = (indices[j], indices[i]);
+            }
+            foreach (var idx in indices) scenarioOrder.Enqueue(idx);
+        }
+
+        bool IsEligible(CallScenario s)
+        {
+            if (s == null) return false;
+            var sm = StatsManager.Instance;
+            string id = s.scenarioId ?? "";
+
+            // Debt collector: only call if the player is actually behind on money (<= 0).
+            if (id == "debt_collector" && sm != null && sm.Money > 0f) return false;
+
+            // Gym sales: only call if happiness is below 70 (they're targeting unhappy people).
+            // (Optional — feel free to loosen if too rare.)
+            // if (id == "gym_upsell" && sm != null && sm.Happiness > 80f) return false;
+
+            return true;
         }
 
         public void ForceCall(int scenarioIndex)
