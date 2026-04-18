@@ -77,3 +77,9 @@ crashlytics-build.properties
 # OS generated
 .DS_Store
 Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example
+/[Aa]ssets/[Ss]treamingAssets/.env
