@@ -1,10 +1,15 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace HackKU.Core
 {
     public class OpenableDoor : MonoBehaviour
     {
+        [Tooltip("Fired when the door starts opening.")]
+        public UnityEvent onOpened;
+
+
         [Tooltip("Hinge pivot. Door rotates around this transform's Y axis. If null, rotates around own transform.")]
         public Transform hinge;
 
@@ -49,6 +54,7 @@ namespace HackKU.Core
             IsOpen = true;
             if (anim != null) StopCoroutine(anim);
             anim = StartCoroutine(AnimateTo(openRotation));
+            onOpened?.Invoke();
         }
 
         public void Close()

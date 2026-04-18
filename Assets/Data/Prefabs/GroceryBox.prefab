@@ -278,6 +278,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   itemPrefab: {fileID: 0}
+  itemPrefabPool:
+  - {fileID: 5689199783587116177, guid: 311eea72231344557a2f3429119d8844, type: 3}
+  - {fileID: 3265148672692373163, guid: 652497e08c0ba491890adad792eebb23, type: 3}
+  - {fileID: 348933537381060729, guid: ce312faf47e214c928cf21954ec4cfa8, type: 3}
+  - {fileID: 6413643651219368970, guid: a3da6b1298b2540649912b26514af43d, type: 3}
+  - {fileID: 2345689133339224399, guid: d0b540c6b3d1e4c238120f7a664a43d4, type: 3}
+  - {fileID: 3697805080731608764, guid: 549a77b19c1b648d6870f201ada4c3b1, type: 3}
+  - {fileID: 6631983870933055280, guid: c6e076bb6723a44a89233570f94c1f4c, type: 3}
+  - {fileID: 3301678923036161706, guid: 61e5f464ebd6f4df995224c431dfd2e9, type: 3}
+  - {fileID: 4801282304095413981, guid: 8ae41b3376ce941b5b40b769057142b1, type: 3}
+  - {fileID: 7311778714687321173, guid: 5ef170abd0e444e90800559a4601fcff, type: 3}
+  - {fileID: 23544755126372844, guid: 9c27b4f80655d484aa93b2ba51138d5f, type: 3}
+  - {fileID: 4616309343405967113, guid: abd6e6b8c4afe4c68a90d8fa012c3e26, type: 3}
+  - {fileID: 5539521066105529582, guid: 5ec068ea2e1f14ed6ae9cac7b7170bcf, type: 3}
   quantity: 1
   foodName: 
   hungerRestore: 0

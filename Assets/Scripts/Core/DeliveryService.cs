@@ -12,6 +12,11 @@ namespace HackKU.Core
 
         public Transform spawnPoint;
 
+        [Tooltip("Plays the moment a delivery arrives (fires at spawnPoint if set, else at this transform).")]
+        public AudioClip deliveryReadyClip;
+
+        [Range(0f, 1f)] public float deliveryReadyVolume = 0.8f;
+
         void Awake()
         {
             if (Instance != null && Instance != this)
@@ -57,6 +62,12 @@ namespace HackKU.Core
                     0f,
                     UnityEngine.Random.Range(-0.15f, 0.15f));
                 Instantiate(item.prefab, spawnPoint.position + jitter, spawnPoint.rotation);
+            }
+
+            if (deliveryReadyClip != null)
+            {
+                Vector3 at = spawnPoint != null ? spawnPoint.position : transform.position;
+                AudioSource.PlayClipAtPoint(deliveryReadyClip, at, deliveryReadyVolume);
             }
 
             OnOrderCompleted?.Invoke(item);

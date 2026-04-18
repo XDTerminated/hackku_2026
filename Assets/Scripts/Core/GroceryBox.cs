@@ -9,6 +9,8 @@ namespace HackKU.Core
     public class GroceryBox : MonoBehaviour
     {
         public GameObject itemPrefab;
+        [Tooltip("If set, Split() picks a random prefab from this list per item. Falls back to itemPrefab when empty.")]
+        public GameObject[] itemPrefabPool;
         public int quantity = 1;
         public string foodName;
         public float hungerRestore;
@@ -51,10 +53,24 @@ namespace HackKU.Core
             Split();
         }
 
+        GameObject PickPrefab()
+        {
+            if (itemPrefabPool != null && itemPrefabPool.Length > 0)
+            {
+                for (int tries = 0; tries < 4; tries++)
+                {
+                    var p = itemPrefabPool[Random.Range(0, itemPrefabPool.Length)];
+                    if (p != null) return p;
+                }
+            }
+            return itemPrefab;
+        }
+
         void Split()
         {
             _split = true;
-            if (itemPrefab == null || quantity <= 0)
+            var hasAny = itemPrefab != null || (itemPrefabPool != null && itemPrefabPool.Length > 0);
+            if (!hasAny || quantity <= 0)
             {
                 Destroy(gameObject);
                 return;
@@ -63,10 +79,12 @@ namespace HackKU.Core
             int n = Mathf.Clamp(quantity, 1, 10);
             for (int i = 0; i < n; i++)
             {
+                var prefab = PickPrefab();
+                if (prefab == null) continue;
                 Vector3 jitter = new Vector3(
                     Random.Range(-itemSpread, itemSpread), 0.15f + i * 0.05f,
                     Random.Range(-itemSpread, itemSpread));
-                var go = Instantiate(itemPrefab, transform.position + jitter, Quaternion.identity);
+                var go = Instantiate(prefab, transform.position + jitter, Quaternion.identity);
                 var eat = go.GetComponent<EatOnHeadProximity>();
                 if (eat != null)
                 {
