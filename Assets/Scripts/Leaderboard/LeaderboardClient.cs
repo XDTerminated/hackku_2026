@@ -27,8 +27,7 @@ namespace HackKU.Leaderboard
         private string _writeKey;
         private bool _keyResolved;
 
-        private int _pendingMoney;
-        private int _pendingHappiness;
+        private MetricsSample _pending;
         private bool _dirty;
         private bool _inFlight;
         private float _nextAllowedSendTime;
@@ -44,19 +43,18 @@ namespace HackKU.Leaderboard
         }
 
         // Fire-and-forget. Rapid calls are coalesced: within throttleSeconds,
-        // only the latest money/happiness values will be sent.
-        public void UpsertStats(int money, int happiness)
+        // only the latest sample will be sent.
+        public void UpsertStats(MetricsSample sample)
         {
-            _pendingMoney = money;
-            _pendingHappiness = happiness;
+            _pending = sample;
             _dirty = true;
             TrySendPending();
         }
 
         // Force-send immediately, bypassing the throttle. Useful on quit/save-point.
-        public void UpsertStatsNow(int money, int happiness, Action onSuccess = null, Action<string> onError = null)
+        public void UpsertStatsNow(MetricsSample sample, Action onSuccess = null, Action<string> onError = null)
         {
-            StartCoroutine(SendOnce(money, happiness, onSuccess, onError));
+            StartCoroutine(SendOnce(sample, onSuccess, onError));
         }
 
         public void GetLeaderboard(int limit, Action<LeaderboardEntry[]> onSuccess, Action<string> onError = null)
@@ -72,10 +70,9 @@ namespace HackKU.Leaderboard
                 StartCoroutine(WaitThenTrySend(_nextAllowedSendTime - Time.unscaledTime));
                 return;
             }
-            var money = _pendingMoney;
-            var happiness = _pendingHappiness;
+            var sample = _pending;
             _dirty = false;
-            StartCoroutine(SendOnce(money, happiness, null, null));
+            StartCoroutine(SendOnce(sample, null, null));
         }
 
         private IEnumerator WaitThenTrySend(float seconds)
@@ -84,7 +81,7 @@ namespace HackKU.Leaderboard
             TrySendPending();
         }
 
-        private IEnumerator SendOnce(int money, int happiness, Action onSuccess, Action<string> onError)
+        private IEnumerator SendOnce(MetricsSample sample, Action onSuccess, Action<string> onError)
         {
             if (!EnsureReady(out var err))
             {
@@ -98,8 +95,15 @@ namespace HackKU.Leaderboard
             {
                 player_id = PlayerIdentity.GetOrCreateId(),
                 display_name = PlayerIdentity.DisplayName,
-                money = money,
-                happiness = happiness,
+                money = sample.money,
+                happiness = sample.happiness,
+                hunger = sample.hunger,
+                hygiene = sample.hygiene,
+                debt = sample.debt,
+                starting_debt = sample.startingDebt,
+                invested = sample.invested,
+                year = sample.year,
+                composite_score = sample.compositeScore,
             };
             var json = JsonUtility.ToJson(body);
             var payload = Encoding.UTF8.GetBytes(json);
@@ -113,7 +117,7 @@ namespace HackKU.Leaderboard
             if (!string.IsNullOrEmpty(_writeKey)) req.SetRequestHeader("x-write-key", _writeKey);
             req.timeout = _config.timeoutSeconds;
 
-            if (_config.verboseLogging) Debug.Log($"[Leaderboard] POST {url} money={money} happiness={happiness}");
+            if (_config.verboseLogging) Debug.Log($"[Leaderboard] POST {url} composite={sample.compositeScore} money={sample.money} happy={sample.happiness}");
 
             yield return req.SendWebRequest();
 
@@ -126,7 +130,6 @@ namespace HackKU.Leaderboard
                 if (!string.IsNullOrEmpty(req.downloadHandler?.text) && req.downloadHandler.text.Length < 1024)
                     msg += " | " + req.downloadHandler.text;
                 Report(msg, onError);
-                // If more changes queued up during the request, send again.
                 TrySendPending();
                 yield break;
             }
@@ -134,7 +137,6 @@ namespace HackKU.Leaderboard
             if (_config.verboseLogging) Debug.Log($"[Leaderboard] ok {req.downloadHandler.text}");
             onSuccess?.Invoke();
 
-            // Trailing-edge: if the user mutated stats mid-request, send again.
             TrySendPending();
         }
 

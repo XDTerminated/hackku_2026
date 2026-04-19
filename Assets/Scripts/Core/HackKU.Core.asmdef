@@ -1,7 +1,7 @@
 {
     "name": "HackKU.Core",
     "rootNamespace": "HackKU.Core",
-    "references": ["Unity.XR.Interaction.Toolkit", "Unity.InputSystem", "Unity.XR.Interaction.Toolkit.Samples.StarterAssets", "Unity.TextMeshPro"],
+    "references": ["Unity.XR.Interaction.Toolkit", "Unity.InputSystem", "Unity.XR.Interaction.Toolkit.Samples.StarterAssets", "Unity.TextMeshPro", "HackKU.Leaderboard"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

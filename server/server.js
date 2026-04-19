@@ -30,7 +30,19 @@ app.post('/api/stats', async (req, res) => {
         return res.status(401).json({ error: 'invalid write key' });
     }
 
-    const { player_id, display_name, money, happiness } = req.body ?? {};
+    const {
+        player_id,
+        display_name,
+        money,
+        happiness,
+        hunger,
+        hygiene,
+        debt,
+        starting_debt,
+        invested,
+        year,
+        composite_score,
+    } = req.body ?? {};
 
     if (!isUuid(player_id)) {
         return res.status(400).json({ error: 'player_id must be a uuid' });
@@ -38,20 +50,40 @@ app.post('/api/stats', async (req, res) => {
     if (typeof display_name !== 'string' || display_name.trim().length === 0 || display_name.length > 64) {
         return res.status(400).json({ error: 'display_name required (1-64 chars)' });
     }
-    if (!Number.isInteger(money) || !Number.isInteger(happiness)) {
-        return res.status(400).json({ error: 'money and happiness must be integers' });
+
+    const ints = { money, happiness, hunger, hygiene, debt, starting_debt, invested, year, composite_score };
+    for (const [k, v] of Object.entries(ints)) {
+        if (!Number.isInteger(v)) return res.status(400).json({ error: `${k} must be an integer` });
     }
 
     try {
         const rows = await sql`
-            insert into players (player_id, display_name, money, happiness, updated_at)
-            values (${player_id}, ${display_name.trim()}, ${money}, ${happiness}, now())
+            insert into players (
+                player_id, display_name,
+                money, happiness, hunger, hygiene,
+                debt, starting_debt, invested, year,
+                composite_score, updated_at
+            )
+            values (
+                ${player_id}, ${display_name.trim()},
+                ${money}, ${happiness}, ${hunger}, ${hygiene},
+                ${debt}, ${starting_debt}, ${invested}, ${year},
+                ${composite_score}, now()
+            )
             on conflict (player_id) do update
-                set display_name = excluded.display_name,
-                    money = excluded.money,
-                    happiness = excluded.happiness,
-                    updated_at = now()
-            returning player_id, display_name, money, happiness, score
+                set display_name    = excluded.display_name,
+                    money           = excluded.money,
+                    happiness       = excluded.happiness,
+                    hunger          = excluded.hunger,
+                    hygiene         = excluded.hygiene,
+                    debt            = excluded.debt,
+                    starting_debt   = excluded.starting_debt,
+                    invested        = excluded.invested,
+                    year            = excluded.year,
+                    composite_score = excluded.composite_score,
+                    updated_at      = now()
+            returning player_id, display_name, money, happiness, hunger, hygiene,
+                      debt, starting_debt, invested, year, composite_score
         `;
         res.json(rows[0]);
     } catch (err) {
@@ -65,10 +97,11 @@ app.get('/api/leaderboard', async (req, res) => {
     const limit = Math.max(1, Math.min(Number.isFinite(parsed) ? parsed : 20, 100));
     try {
         const rows = await sql`
-            select display_name, money, happiness, score,
-                   rank() over (order by score desc) as rank
+            select display_name, money, happiness, hunger, hygiene,
+                   debt, starting_debt, invested, year, composite_score,
+                   rank() over (order by composite_score desc) as rank
             from players
-            order by score desc, updated_at asc
+            order by composite_score desc, updated_at asc
             limit ${limit}
         `;
         res.json({ entries: rows });

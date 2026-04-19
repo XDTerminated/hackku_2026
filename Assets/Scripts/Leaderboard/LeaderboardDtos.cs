@@ -9,6 +9,13 @@ namespace HackKU.Leaderboard
         public string display_name;
         public int money;
         public int happiness;
+        public int hunger;
+        public int hygiene;
+        public int debt;
+        public int starting_debt;
+        public int invested;
+        public int year;
+        public int composite_score;
     }
 
     [Serializable]
@@ -17,7 +24,13 @@ namespace HackKU.Leaderboard
         public string display_name;
         public int money;
         public int happiness;
-        public int score;
+        public int hunger;
+        public int hygiene;
+        public int debt;
+        public int starting_debt;
+        public int invested;
+        public int year;
+        public int composite_score;
         public int rank;
     }
 
@@ -25,5 +38,19 @@ namespace HackKU.Leaderboard
     public class LeaderboardResponse
     {
         public LeaderboardEntry[] entries;
+    }
+
+    [Serializable]
+    public struct MetricsSample
+    {
+        public int money;
+        public int happiness;
+        public int hunger;
+        public int hygiene;
+        public int debt;
+        public int startingDebt;
+        public int invested;
+        public int year;
+        public int compositeScore;
     }
 }
