@@ -23,5 +23,5 @@ MonoBehaviour:
   yearlyExpenses: 0
   yearlyHappinessRegen: 0
   gimmickTag: Balanced start
-  startingDebt: 20000
+  startingDebt: 3000
   paycheckDebtSplit: 0.3

@@ -14,6 +14,10 @@ namespace HackKU.Core
         public float heightAboveTarget = 0.45f;
         public float bobAmplitude = 0.1f;
         public float bobSpeed = 3f;
+        [Tooltip("When true, the marker floats above the marker's own transform rather than the target's bounds — useful for path breadcrumbs.")]
+        public bool useSelfPosition = false;
+        [Tooltip("Uniform UI scale multiplier — smaller = smaller arrow card.")]
+        public float scale = 1f;
 
         GameObject _canvasGo;
         TMP_Text _arrowText;
@@ -37,6 +41,7 @@ namespace HackKU.Core
 
         void CacheAnchor()
         {
+            if (useSelfPosition) { _cachedAnchor = transform.position; _boundsCached = true; return; }
             if (target == null) { _cachedAnchor = transform.position; _boundsCached = false; return; }
             Bounds b = new Bounds(target.transform.position, Vector3.zero);
             bool first = true;
@@ -55,6 +60,16 @@ namespace HackKU.Core
         void Build()
         {
             if (_canvasGo != null) return;
+            // Strip stale arrow canvases from prior ExecuteAlways passes.
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var c = transform.GetChild(i);
+                if (c != null && c.name == "[ArrowCanvas]")
+                {
+                    if (Application.isPlaying) Destroy(c.gameObject);
+                    else DestroyImmediate(c.gameObject);
+                }
+            }
             _canvasGo = new GameObject("[ArrowCanvas]");
             _canvasGo.transform.SetParent(transform, false);
             var canvas = _canvasGo.AddComponent<Canvas>();
@@ -95,10 +110,13 @@ namespace HackKU.Core
         void LateUpdate()
         {
             if (_canvasGo == null) Build();
-            if (!_boundsCached && target != null) CacheAnchor();
+            if (useSelfPosition) _cachedAnchor = transform.position;
+            else if (!_boundsCached && target != null) CacheAnchor();
 
             float bob = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
             _canvasGo.transform.position = _cachedAnchor + new Vector3(0f, heightAboveTarget + bob, 0f);
+            float s = Mathf.Max(0.05f, scale);
+            _canvasGo.transform.localScale = Vector3.one * 0.003f * s;
 
             if (_camTf == null) ResolveCamera();
             if (_camTf != null)

@@ -16,6 +16,7 @@ namespace HackKU.Core
         public Image debtFillImage;
         public TMP_Text investedText;
         public TMP_Text hygieneText;
+        public Image happinessFillImage;
 
         [Header("Invested colors")]
         public Color investedUpColor = new Color(0.45f, 0.9f, 0.5f);
@@ -158,12 +159,14 @@ namespace HackKU.Core
             int rounded = Mathf.RoundToInt(m);
             return (rounded < 0 ? "-$" : "$") + Mathf.Abs(rounded).ToString("N0");
         }
-        static string FormatHappiness(float h) => "HAPPINESS " + HappinessEmoji(h) + " " + Mathf.RoundToInt(h) + "%";
+        static string FormatHappiness(float h) => HappinessEmoji(h);
 
         void HandleStats(StatsSnapshot s)
         {
             if (moneyText != null) moneyText.text = FormatMoney(s.money);
             if (happinessText != null) happinessText.text = FormatHappiness(s.happiness);
+            if (happinessFillImage != null)
+                happinessFillImage.fillAmount = Mathf.Clamp01(s.happiness / 100f);
             if (yearText != null) yearText.text = "YEAR " + s.year;
             if (debtText != null) debtText.text = s.debt > 0f ? FormatMoney(s.debt) : "PAID OFF";
             if (debtFillImage != null)

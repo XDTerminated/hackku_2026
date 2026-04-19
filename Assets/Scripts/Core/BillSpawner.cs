@@ -20,9 +20,9 @@ namespace HackKU.Core
         [SerializeField] Transform spawnPoint;
 
         [Header("Cadence (real seconds)")]
-        [SerializeField] float firstSpawnDelay = 20f;
-        [SerializeField] float minGap = 25f;
-        [SerializeField] float maxGap = 45f;
+        [SerializeField] float firstSpawnDelay = 5f;
+        [SerializeField] float minGap = 8f;
+        [SerializeField] float maxGap = 15f;
 
         [Tooltip("Max physical bills that can be sitting unpaid at once. Above this, spawner waits.")]
         [SerializeField] int maxConcurrent = 4;
@@ -40,12 +40,26 @@ namespace HackKU.Core
         float _nextSpawn;
         readonly List<BillPaper> _live = new List<BillPaper>();
 
-        void OnEnable() { _nextSpawn = Time.time + firstSpawnDelay; }
+        bool _armed;
+
+        void OnEnable()
+        {
+            _armed = false;
+            _nextSpawn = float.MaxValue; // wait for character pick before scheduling anything
+        }
 
         void Update()
         {
             if (billPrefab == null || spawnPoint == null) return;
             _live.RemoveAll(b => b == null);
+            // Hold fire until the player has picked a character (StatsManager.ActiveProfile set).
+            if (!_armed)
+            {
+                var sm = StatsManager.Instance;
+                if (sm == null || sm.ActiveProfile == null) return;
+                _armed = true;
+                _nextSpawn = Time.time + firstSpawnDelay;
+            }
             if (Time.time < _nextSpawn) return;
             if (_live.Count >= maxConcurrent) { _nextSpawn = Time.time + 3f; return; }
 

@@ -139,6 +139,60 @@ namespace HackKU.EditorTools
 
         // Adds bouncing-arrow markers above the Investment Board and Shower ghosts so the
         // player is visually guided to the unlock-critical items first.
+        // Drops a short "breadcrumb" trail of bouncing arrows between the XR Origin and the
+        // shower ghost so the player knows which way to walk (up the stairs). Each breadcrumb
+        // targets the same shower ghost, so all of them disappear the moment shower is bought.
+        [MenuItem("HackKU/Ghosts/Build Path To Shower")]
+        public static void BuildPathToShower()
+        {
+            var rig = GameObject.Find("XR Origin (XR Rig)") ?? GameObject.Find("XR Origin");
+            if (rig == null) { Debug.LogError("[Ghosts] no XR Origin"); return; }
+            HackKU.Core.GhostFurnitureItem shower = null;
+            foreach (var g in Object.FindObjectsByType<HackKU.Core.GhostFurnitureItem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (g != null && (g.itemId ?? "").ToLowerInvariant() == "shower") { shower = g; break; }
+            if (shower == null) { Debug.LogError("[Ghosts] no shower ghost in scene"); return; }
+
+            // Wipe previous trail.
+            var prev = GameObject.Find("[PathToShower]");
+            if (prev != null) Object.DestroyImmediate(prev);
+
+            var root = new GameObject("[PathToShower]");
+
+            Vector3 start = rig.transform.position;
+            Vector3 end = shower.transform.position;
+            const int count = 10;
+            for (int i = 1; i <= count; i++)
+            {
+                float t = i / (float)(count + 1);
+                // Interpolate X/Z linearly but for Y we raycast DOWN to find the floor/stair
+                // surface. That way the trail climbs real stair steps instead of clipping through.
+                Vector3 lateral = new Vector3(Mathf.Lerp(start.x, end.x, t),
+                                              Mathf.Lerp(start.y, end.y, t) + 3f,
+                                              Mathf.Lerp(start.z, end.z, t));
+                float groundY;
+                if (Physics.Raycast(lateral, Vector3.down, out var hit, 20f))
+                    groundY = hit.point.y;
+                else
+                    groundY = Mathf.Lerp(start.y, end.y, t);
+                Vector3 p = new Vector3(lateral.x, groundY + 0.9f, lateral.z);
+
+                var node = new GameObject("Breadcrumb_" + i);
+                node.transform.SetParent(root.transform, true);
+                node.transform.position = p;
+                var m = node.AddComponent<HackKU.Core.ObjectiveMarker>();
+                m.target = shower;
+                m.label = "SHOWER";
+                m.arrowColor = new Color(0.5f, 0.85f, 1f);
+                m.bobAmplitude = 0.06f;
+                m.bobSpeed = 3.5f;
+                m.heightAboveTarget = 0.25f;
+                m.useSelfPosition = true;
+                m.scale = 0.45f;
+            }
+            EditorSceneManager.MarkSceneDirty(rig.scene);
+            Debug.Log($"[Ghosts] Built {count}-step shower path.");
+        }
+
         [MenuItem("HackKU/Ghosts/Add Objective Arrows (Board + Shower)")]
         public static void AddObjectiveArrows()
         {
@@ -155,6 +209,7 @@ namespace HackKU.EditorTools
                 if (marker == null) marker = g.gameObject.AddComponent<HackKU.Core.ObjectiveMarker>();
                 marker.target = g;
                 marker.label = label;
+                marker.scale = (id == "shower") ? 0.35f : 1f;
                 EditorUtility.SetDirty(marker);
                 added++;
             }

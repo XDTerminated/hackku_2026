@@ -36,7 +36,7 @@ namespace HackKU.AI
         public bool IsCallActive { get; private set; }
 
         [Tooltip("Maximum real-time seconds a single call can stay active before being forcibly aborted. Safety net against stuck coroutines or non-terminating LLM flows.")]
-        [SerializeField] private float maxCallDurationSeconds = 1800f;
+        [SerializeField] private float maxCallDurationSeconds = 90f;
         private float _callStartTime;
 
         private void Update()

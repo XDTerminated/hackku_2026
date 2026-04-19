@@ -23,5 +23,5 @@ MonoBehaviour:
   yearlyExpenses: 0
   yearlyHappinessRegen: -1
   gimmickTag: High income, crushing loans
-  startingDebt: 40000
+  startingDebt: 4000
   paycheckDebtSplit: 0.45

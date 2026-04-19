@@ -22,5 +22,5 @@ MonoBehaviour:
   yearlyExpenses: 0
   yearlyHappinessRegen: 2
   gimmickTag: Low debt, high happiness
-  startingDebt: 8000
+  startingDebt: 2500
   paycheckDebtSplit: 0.2

@@ -515,103 +515,187 @@ namespace HackKU.AI
                 t, @"\b(all|everything|entire|max|maximum|whole)\b");
         }
 
+        static bool IsGoodbye(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string t = text.ToLowerInvariant();
+            return t.Contains("goodbye") || t.Contains("bye") || t.Contains("hang up") ||
+                   t.Contains("that's all") || t.Contains("thats all") || t.Contains("that is all") ||
+                   t.Contains("nothing else") || t.Contains("i'm done") || t.Contains("im done") ||
+                   t.Contains("we're done") || t.Contains("were done") || t.Contains("thanks, bye") ||
+                   t.Contains("end call") || t.Contains("no thank") || t == "no" || t == "nope";
+        }
+
+        // Recognizes combined references like "all my money plus my stocks",
+        // "everything I have", "my checking and my portfolio". Returns the total, or 0.
+        static float ParseComboAmount(string text, float checking, float invested)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return 0f;
+            string t = text.ToLowerInvariant();
+            bool mentionsMoney = t.Contains("money") || t.Contains("cash") ||
+                                 t.Contains("checking") || t.Contains("savings") || t.Contains("account");
+            bool mentionsStocks = t.Contains("stock") || t.Contains("stocks") ||
+                                  t.Contains("invest") || t.Contains("portfolio") || t.Contains("shares") ||
+                                  t.Contains("market");
+            bool all = MentionsAll(t);
+            bool combinator = t.Contains(" plus ") || t.Contains(" and ") || t.Contains(" with ") ||
+                              t.Contains("combined") || t.Contains("total") || t.Contains("everything");
+
+            if (all && combinator && (mentionsMoney || mentionsStocks)) return checking + invested;
+            if (t.Contains("everything i have") || t.Contains("everything i've got") ||
+                t.Contains("every dollar") || t.Contains("whole net worth") || t.Contains("net worth"))
+                return checking + invested;
+            if (all && mentionsMoney && mentionsStocks) return checking + invested;
+            if (all && mentionsMoney) return checking;
+            if (all && mentionsStocks) return invested;
+            return 0f;
+        }
+
+        // Speaks a line while polling the mic for barge-in. Returns true if the
+        // player interrupted (spoke while TTS was playing) — caller should then
+        // immediately ListenOnce to capture what they said.
+        IEnumerator SpeakInterruptible(string line, NPCVoiceProfile voice, CancellationToken ct, System.Action<bool> onDone)
+        {
+            SpeakLine(line, voice);
+            if (mic != null && !mic.IsMicOpen) mic.InitializeRecording();
+            if (mic != null && !mic.IsRecording) mic.StartRecording();
+
+            const float bargeRms = 0.035f;     // higher than normal VAD — avoid TTS bleed tripping it
+            const float bargeHold = 0.18f;
+            float aboveSince = -1f;
+            bool interrupted = false;
+            float giveUpAt = Time.unscaledTime + 30f;
+
+            while (!ct.IsCancellationRequested && npcVoice != null && npcVoice.IsSpeaking && Time.unscaledTime < giveUpAt)
+            {
+                if (mic != null)
+                {
+                    float lvl = mic.CurrentLevel;
+                    if (lvl > bargeRms)
+                    {
+                        if (aboveSince < 0f) aboveSince = Time.unscaledTime;
+                        else if (Time.unscaledTime - aboveSince > bargeHold)
+                        {
+                            interrupted = true;
+                            try { npcVoice.Stop(); } catch { }
+                            break;
+                        }
+                    }
+                    else aboveSince = -1f;
+                }
+                yield return null;
+            }
+            // If not interrupted, drain remaining speech normally.
+            while (!ct.IsCancellationRequested && npcVoice != null && npcVoice.IsSpeaking) yield return null;
+            onDone?.Invoke(interrupted);
+        }
+
         IEnumerator RunBankCall(string firstText, CancellationToken ct)
         {
             var sm = StatsManager.Instance;
+            var im = InvestmentManager.Instance;
             NPCVoiceProfile voice = bankVoice != null ? bankVoice : groceryVoice;
 
             if (sm == null)
             {
-                SpeakLine("Sorry, systems down. Please call back later.", voice);
-                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield return Say("Sorry, systems down. Please call back later.", voice, ct, _ => { });
                 yield break;
             }
 
-            // If the player's first utterance clearly mentions investing, route to the
-            // broker flow so "call the bank, invest $500" works as a single call.
-            if (IsInvestIntent(firstText) || IsWithdrawIntent(firstText))
-            {
-                yield return IsWithdrawIntent(firstText) ? RunWithdrawCall(firstText, ct)
-                                                        : RunInvestCall(firstText, ct);
-                yield break;
-            }
+            bool firstTurn = true;
+            string pending = firstText;
 
-            // If no explicit intent, ask up front which the player wants — loan or invest.
-            bool routedToInvest = false;
-            if (!MentionsLoan(firstText))
+            while (!ct.IsCancellationRequested)
             {
-                string greeting = sm.Debt > 0f
-                    ? "Hello, this is the bank. Would you like to pay down your loan, invest money, or cash out some of your investments today?"
-                    : "Hello, this is the bank. Looks like your loan is already paid off — would you like to invest, or cash out some of your investments today?";
-                SpeakLine(greeting, voice);
-                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
-                yield return new WaitForSeconds(0.2f);
+                // Route on intent first — these sub-flows also handle their own ack.
+                if (IsWithdrawIntent(pending)) { yield return RunWithdrawCall(pending, ct); }
+                else if (IsInvestIntent(pending)) { yield return RunInvestCall(pending, ct); }
+                else if (MentionsLoan(pending) || (firstTurn && !string.IsNullOrWhiteSpace(pending)))
+                {
+                    yield return HandleLoanPayment(pending, sm, im, voice, ct);
+                }
+                else
+                {
+                    // Ask what they want.
+                    string greeting = firstTurn
+                        ? (sm.Debt > 0f
+                            ? "Hello, this is the bank. Would you like to pay down your loan, invest money, or cash out investments today?"
+                            : "Hello, this is the bank. Your loan is paid off — would you like to invest, or cash out some of your investments?")
+                        : "Anything else I can help you with — loan, invest, or cash out?";
+                    string heard = null;
+                    yield return Prompt(greeting, voice, ct, r => heard = r);
+                    if (ct.IsCancellationRequested) yield break;
+                    heard = heard ?? string.Empty;
+                    if (IsGoodbye(heard)) break;
+                    pending = heard;
+                    firstTurn = false;
+                    continue;
+                }
 
+                // After a completed action — offer another, exit on goodbye.
+                firstTurn = false;
                 string reply = null;
-                yield return ListenOnce(ct, 8f, r => reply = r);
+                yield return Prompt("Anything else? I can take another loan payment, invest, or cash out — or say goodbye.", voice, ct, r => reply = r);
                 if (ct.IsCancellationRequested) yield break;
                 reply = reply ?? string.Empty;
-
-                if (IsWithdrawIntent(reply)) { yield return RunWithdrawCall(reply, ct); yield break; }
-                if (IsInvestIntent(reply)) { yield return RunInvestCall(reply, ct); yield break; }
-                // No invest keywords + debt is zero → nothing to do.
-                if (sm.Debt <= 0f)
-                {
-                    SpeakLine("Alright, your loan is already clear. Give us a ring when you'd like to invest.", voice);
-                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
-                    yield break;
-                }
-                firstText = reply; // reuse whatever they said as the loan-amount seed
+                if (IsGoodbye(reply) || string.IsNullOrWhiteSpace(reply)) break;
+                pending = reply;
             }
 
+            yield return Say("Thanks for calling — take care.", voice, ct, _ => { });
+        }
+
+        // One loan-payment transaction. Handles combo amounts by auto-liquidating investments if needed.
+        IEnumerator HandleLoanPayment(string utterance, StatsManager sm, InvestmentManager im, NPCVoiceProfile voice, CancellationToken ct)
+        {
             if (sm.Debt <= 0f)
             {
-                SpeakLine("Good afternoon — looks like you're already paid off. Nothing more to do here. Have a good one.", voice);
-                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield return Say("Your loan is already paid off — nothing to apply here.", voice, ct, _ => { });
                 yield break;
             }
 
-            // Step 1: did the player's utterance already include an amount?
-            float amount = ParseDollarAmount(firstText);
-            _ = routedToInvest;
+            float checking = sm.Money;
+            float invested = im != null ? im.Invested : 0f;
+            float amount = ParseComboAmount(utterance, checking, invested);
+            bool wantsAll = amount > 0f;
+            if (amount <= 0f) amount = ParseDollarAmount(utterance);
 
-            // Step 2: if not, greet + listen. If we don't catch an amount, ask again up to 3 times
-            // before giving up. Player should never have to redial just because we misheard.
+            int attempts = 0;
+            while (amount <= 0f && attempts < 3 && !ct.IsCancellationRequested)
+            {
+                string prompt = attempts == 0
+                    ? "How much would you like to pay on your loan today?"
+                    : "Sorry, I didn't catch an amount — how many dollars toward your loan?";
+                string reply = null;
+                yield return Prompt(prompt, voice, ct, r => reply = r);
+                if (ct.IsCancellationRequested) yield break;
+                reply = reply ?? "";
+                if (IsGoodbye(reply)) yield break;
+                checking = sm.Money; invested = im != null ? im.Invested : 0f;
+                amount = ParseComboAmount(reply, checking, invested);
+                wantsAll = amount > 0f;
+                if (amount <= 0f) amount = ParseDollarAmount(reply);
+                attempts++;
+            }
             if (amount <= 0f)
             {
-                string[] prompts =
-                {
-                    "Hello, this is the bank. How much would you like to pay on your loan today?",
-                    "Sorry, I didn't catch a dollar amount — how much would you like to pay?",
-                    "One more time, please — how many dollars toward your loan today?",
-                };
+                yield return Say("No problem — give us a ring back when you're ready.", voice, ct, _ => { });
+                yield break;
+            }
 
-                for (int attempt = 0; attempt < prompts.Length && amount <= 0f; attempt++)
-                {
-                    SpeakLine(prompts[attempt], voice);
-                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
-                    if (ct.IsCancellationRequested) yield break;
-                    yield return new WaitForSeconds(0.2f);
-
-                    string reply = null;
-                    yield return ListenOnce(ct, 8f, r => reply = r);
-                    if (ct.IsCancellationRequested) yield break;
-                    amount = ParseDollarAmount(reply ?? "");
-                }
-
-                if (amount <= 0f)
-                {
-                    SpeakLine("Alright, no problem — give us a call back when you've decided. Take care.", voice);
-                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
-                    yield break;
-                }
+            // If the requested amount exceeds checking, auto-liquidate the shortfall from investments.
+            float shortfall = amount - sm.Money;
+            float liquidated = 0f;
+            if (shortfall > 0f && im != null && im.Invested > 0f)
+            {
+                liquidated = im.Withdraw(Mathf.Min(shortfall, im.Invested));
+                if (liquidated > 0f) sm.ApplyDelta(liquidated, 0f, "Liquidation");
             }
 
             float applied = Mathf.Min(amount, Mathf.Min(sm.Money, sm.Debt));
             if (applied <= 0f)
             {
-                SpeakLine("Your card got declined, I'm afraid. Call back when you've got the funds.", voice);
-                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield return Say("Your card didn't clear — call back when the funds are available.", voice, ct, _ => { });
                 yield break;
             }
 
@@ -619,24 +703,36 @@ namespace HackKU.AI
             sm.ApplyDebtDelta(-applied, "Loan payment");
             float happinessGain = Mathf.Clamp(applied / 500f, 1f, 8f);
             sm.ApplyDelta(0f, happinessGain, "Loan relief");
-
             ToastHUD.Show("-$" + Mathf.Round(applied), "Loan payment", ToastKind.Bill);
             ToastHUD.Show("+" + Mathf.RoundToInt(happinessGain) + "%", "Debt relief", ToastKind.HappinessUp);
 
-            string ackPrompt = "Respond as a calm professional loan servicer named Morgan. The customer just paid $" +
-                               Mathf.Round(applied) + " toward their student loan. Remaining balance is about $" +
-                               Mathf.RoundToInt(sm.Debt) + ". Confirm the payment in one warm sentence, mention the " +
-                               "remaining balance briefly, and sign off. Plain spoken English only.";
-            string ack = null;
-            var ackTask = SafeOneShot(ackPrompt, ct);
-            while (!ackTask.IsCompleted) yield return null;
-            if (!ct.IsCancellationRequested) ack = ackTask.Result;
-            if (string.IsNullOrWhiteSpace(ack))
-                ack = "Got it, $" + Mathf.Round(applied) + " applied. Remaining balance is about $" +
-                      Mathf.RoundToInt(sm.Debt) + ". Have a great day.";
+            string ack = "Got it — $" + Mathf.Round(applied) + " applied";
+            if (liquidated > 0f) ack += " (liquidated $" + Mathf.Round(liquidated) + " from your portfolio to cover)";
+            ack += sm.Debt > 0f
+                ? ". Remaining balance is about $" + Mathf.RoundToInt(sm.Debt) + "."
+                : ". That clears your loan entirely — congratulations.";
+            yield return Say(ack, voice, ct, _ => { });
+            _ = wantsAll;
+        }
 
-            SpeakLine(Sanitize(ack), voice);
-            while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+        // Speak a line while allowing barge-in; caller doesn't need to listen after.
+        IEnumerator Say(string line, NPCVoiceProfile voice, CancellationToken ct, System.Action<bool> onInterrupted)
+        {
+            bool interrupted = false;
+            yield return SpeakInterruptible(line, voice, ct, b => interrupted = b);
+            onInterrupted?.Invoke(interrupted);
+        }
+
+        // Speak a line then listen for a reply. If the player barges in, skip to listening immediately.
+        IEnumerator Prompt(string line, NPCVoiceProfile voice, CancellationToken ct, System.Action<string> onReply)
+        {
+            bool interrupted = false;
+            yield return SpeakInterruptible(line, voice, ct, b => interrupted = b);
+            if (ct.IsCancellationRequested) { onReply?.Invoke(""); yield break; }
+            if (!interrupted) yield return new WaitForSeconds(0.2f);
+            string reply = null;
+            yield return ListenOnce(ct, 10f, r => reply = r);
+            onReply?.Invoke(reply ?? "");
         }
 
         // --- Brokerage (invest) flow ---------------------------------------------------

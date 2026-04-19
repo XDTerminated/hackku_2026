@@ -13,9 +13,9 @@ namespace HackKU.AI
         [SerializeField] CallScenario[] scenarios;
 
         [Header("Cadence (real seconds)")]
-        [SerializeField] float minGapSeconds = 10f;
-        [SerializeField] float maxGapSeconds = 20f;
-        [SerializeField] float firstCallDelay = 7f;
+        [SerializeField] float minGapSeconds = 30f;
+        [SerializeField] float maxGapSeconds = 45f;
+        [SerializeField] float firstCallDelay = 20f;
 
         bool _characterArmed;
 
