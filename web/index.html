@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ghost of Adulthood — Leaderboard</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="bg"></div>
+
+    <header class="hero">
+        <div class="title-row">
+            <h1>Ghost of Adulthood</h1>
+            <span class="subtitle">Leaderboard</span>
+        </div>
+        <div class="meta">
+            <label class="endpoint">
+                <span>Server</span>
+                <input id="endpoint" type="text" spellcheck="false" />
+            </label>
+            <div class="status">
+                <span id="status-dot" class="dot"></span>
+                <span id="status-text">connecting…</span>
+            </div>
+            <button id="refresh" type="button">Refresh</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="podium" id="podium"></section>
+
+        <section class="table-wrap">
+            <table id="board">
+                <thead>
+                    <tr>
+                        <th class="col-rank">#</th>
+                        <th class="col-name">Player</th>
+                        <th class="col-score">Score</th>
+                        <th>Happy</th>
+                        <th>Hunger</th>
+                        <th>Hygiene</th>
+                        <th>Debt Paid</th>
+                        <th class="col-money">Money</th>
+                        <th class="col-money">Invested</th>
+                        <th>Year</th>
+                    </tr>
+                </thead>
+                <tbody id="board-body"></tbody>
+            </table>
+            <div id="empty" class="empty hidden">No runs on the board yet. Finish a game in VR.</div>
+        </section>
+    </main>
+
+    <footer>
+        <span>auto-refreshes every <b>5s</b></span>
+        <span class="sep">·</span>
+        <span id="updated">—</span>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
