@@ -33,6 +33,7 @@ namespace HackKU.Game
         void OnSelect(SelectEnterEventArgs args)
         {
             if (cardUI == null) return;
+            HackKU.Core.SfxHub.Instance.PlayAt("ui_click", transform.position, 0.85f);
             var btn = cardUI.GetComponentInChildren<UnityEngine.UI.Button>(true);
             if (btn != null) btn.onClick.Invoke();
         }

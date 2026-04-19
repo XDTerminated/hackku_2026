@@ -68,6 +68,7 @@ namespace HackKU.Core
             if (IsOnCradle)
             {
                 IsOnCradle = false;
+                SfxHub.Instance.PlayAt("phone_pickup", transform.position, 0.9f);
                 if (Phone != null) Phone.NotifyHandsetLifted();
             }
         }
@@ -160,10 +161,18 @@ namespace HackKU.Core
             {
                 transform.localPosition = restLocalPos;
                 transform.localRotation = restLocalRot;
-                if (!wasOnCradle && Phone != null) Phone.NotifyHandsetPlacedBack();
+                if (!wasOnCradle)
+                {
+                    SfxHub.Instance.PlayAt("phone_wall_place", transform.position, 0.9f);
+                    if (Phone != null) Phone.NotifyHandsetPlacedBack();
+                }
                 return;
             }
-            if (!wasOnCradle && Phone != null) Phone.NotifyHandsetPlacedBack();
+            if (!wasOnCradle)
+            {
+                SfxHub.Instance.PlayAt("phone_wall_place", transform.position, 0.9f);
+                if (Phone != null) Phone.NotifyHandsetPlacedBack();
+            }
             dockAnim = StartCoroutine(DockAnimation());
         }
 

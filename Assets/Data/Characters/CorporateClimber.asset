@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
   m_Name: CorporateClimber
   m_EditorClassIdentifier:
-  characterName: Marcus
+  characterName: The Shark
   description: "Fresh out of the grind factory. The salary is real, so is the $40K
     of loans chained to it. Every hour on the clock buys a future \u2014 if you
     don't burn out first."
@@ -23,5 +23,5 @@ MonoBehaviour:
   yearlyExpenses: 0
   yearlyHappinessRegen: -1
   gimmickTag: High income, crushing loans
-  startingDebt: 4000
+  startingDebt: 14000
   paycheckDebtSplit: 0.45

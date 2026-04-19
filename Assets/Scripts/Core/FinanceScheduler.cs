@@ -14,11 +14,11 @@ namespace HackKU.Core
         [Tooltip("Paychecks per year. 2 = every 6 months (slower, encourages saving).")]
         [SerializeField] int paychecksPerYear = 6;
         [Tooltip("Multiplier on the paycheck amount.")]
-        [SerializeField] float paycheckMultiplier = 1.0f;
+        [SerializeField] float paycheckMultiplier = 0.3f;
 
         [Header("Student-loan debt")]
-        [Tooltip("Monthly compounding interest rate on outstanding debt (0.005 = 0.5% per in-game month).")]
-        [SerializeField] float monthlyInterestRate = 0.005f;
+        [Tooltip("Monthly compounding interest rate on outstanding debt (0.008 = 0.8% per in-game month).")]
+        [SerializeField] float monthlyInterestRate = 0.008f;
 
         [Header("Happiness")]
         [Tooltip("Happiness points added per month if the player is fine (hunger OK, money OK).")]

@@ -458,7 +458,7 @@ namespace HackKU.EditorTools
             t.fontStyle = style;
             t.color = color;
             t.alignment = align;
-            t.enableWordWrapping = false;
+            t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
             return t;
         }

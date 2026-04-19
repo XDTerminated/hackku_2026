@@ -57,6 +57,7 @@ namespace HackKU.Core
         void Consume()
         {
             if (HungerManager.Instance != null) HungerManager.Instance.ApplyDelta(hungerRestore, foodName);
+            SfxHub.Instance.PlayAt("eat", transform.position, 0.9f);
             ToastHUD.Show("+" + Mathf.Round(hungerRestore), "Ate " + foodName, ToastKind.HungerUp);
             Destroy(gameObject);
         }

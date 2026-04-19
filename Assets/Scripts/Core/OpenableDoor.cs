@@ -54,6 +54,7 @@ namespace HackKU.Core
             IsOpen = true;
             if (anim != null) StopCoroutine(anim);
             anim = StartCoroutine(AnimateTo(openRotation));
+            SfxHub.Instance.PlayAt("door_open", transform.position, 0.75f);
             onOpened?.Invoke();
         }
 
@@ -63,6 +64,7 @@ namespace HackKU.Core
             IsOpen = false;
             if (anim != null) StopCoroutine(anim);
             anim = StartCoroutine(AnimateTo(closedRotation));
+            SfxHub.Instance.PlayAt("door_close", transform.position, 0.75f);
         }
 
         IEnumerator AnimateTo(Quaternion target)

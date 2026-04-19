@@ -50,6 +50,7 @@ namespace HackKU.AI
         public CallScenario ActiveScenario => _activeScenario;
 
         private CallScenario _activeScenario;
+        private bool _outcomeApplied;
         private ConversationSession _session;
         private GroqClient _groq;
         private CancellationTokenSource _cts;
@@ -118,6 +119,7 @@ namespace HackKU.AI
 
             HookPhoneEvents();
             _activeScenario = s;
+            _outcomeApplied = false;
             IsCallActive = true;
             _callStartTime = Time.unscaledTime;
 
@@ -549,6 +551,7 @@ namespace HackKU.AI
                 Debug.LogWarning("[CallController] No StatsManager.Instance — outcome not applied.");
                 return;
             }
+            _outcomeApplied = true;
             stats.ApplyDelta(outcome.moneyDelta, outcome.happinessDelta, outcome.reason);
 
             // Hygiene side-effect (dentist, doctor, etc). Silent unless the scenario authored one.
@@ -585,6 +588,21 @@ namespace HackKU.AI
             if (!IsCallActive && _loopRoutine == null && _cts == null) return;
 
             if (verboseLogging) Debug.Log("[CallController] Aborting call: " + reasonLog);
+
+            // Hanging up on a scenario NPC before the deal resolves counts as DECLINING —
+            // the caller gets shortchanged and the player still eats the "no" outcome
+            // (missed wedding, skipped therapy, etc.) so you can't dodge social cost by hanging up.
+            if (IsCallActive && _activeScenario != null && !_outcomeApplied)
+            {
+                CallOutcome declined = new CallOutcome
+                {
+                    moneyDelta = _activeScenario.noMoneyDelta,
+                    happinessDelta = _activeScenario.noHappinessDelta,
+                    hygieneDelta = _activeScenario.noHygieneDelta,
+                    reason = (string.IsNullOrWhiteSpace(_activeScenario.noReason) ? _activeScenario.callerName : _activeScenario.noReason) + " (hung up)",
+                };
+                ApplyOutcome(declined);
+            }
 
             try { _cts?.Cancel(); } catch { /* ignore */ }
 
@@ -630,6 +648,9 @@ namespace HackKU.AI
             {
                 try { mic.DisposeRecording(); } catch { /* ignore */ }
             }
+
+            Vector3 sfxPos = phone != null ? phone.transform.position : Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+            HackKU.Core.SfxHub.Instance.PlayAt("phone_hangup", sfxPos, 0.8f);
 
             if (verboseLogging) Debug.Log("[CallController] FinishCall — IsCallActive=false, next call can be scheduled.");
 

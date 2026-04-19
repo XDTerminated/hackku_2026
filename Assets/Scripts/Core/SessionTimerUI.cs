@@ -18,11 +18,25 @@ namespace HackKU.Core
         static readonly Color AmberColor = new Color(1f, 0.55f, 0.3f);
         static readonly Color NormalColor = new Color(0.75f, 0.9f, 1f);
 
-        void OnEnable() { _startTime = Time.time; _shownTotal = int.MinValue; _amberShown = false; }
+        bool _started;
+
+        void OnEnable() { _started = false; _shownTotal = int.MinValue; _amberShown = false; }
 
         void Update()
         {
             if (elapsedText == null) return;
+            // Delay the clock until the player has picked a character.
+            if (!_started)
+            {
+                var sm = StatsManager.Instance;
+                if (sm == null || sm.ActiveProfile == null)
+                {
+                    if (_shownTotal != 0) { _shownTotal = 0; elapsedText.text = "0:00"; }
+                    return;
+                }
+                _started = true;
+                _startTime = Time.time;
+            }
             float elapsed = Time.time - _startTime;
             int total = Mathf.Max(0, Mathf.FloorToInt(elapsed));
             if (total != _shownTotal)

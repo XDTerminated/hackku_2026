@@ -8,10 +8,10 @@ namespace HackKU.Core
     public class CardFanFollower : MonoBehaviour
     {
         [Tooltip("Distance in front of the player's head (horizontal).")]
-        public float distance = 2.5f;
+        public float distance = 0.6f;
 
         [Tooltip("Eye-height offset (world Y) so cards don't bob with head tilt.")]
-        public float eyeHeight = 1.55f;
+        public float eyeHeight = 1.45f;
 
         [Tooltip("How quickly the fan catches up to the player's current facing.")]
         public float followSpeed = 4f;
@@ -42,6 +42,21 @@ namespace HackKU.Core
             if (autoDisableWhenChildrenGone && transform.childCount == 0)
             {
                 enabled = false;
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void AutoAttach()
+        {
+            // Guarantees the follower is active even if the CharacterSelect was built
+            // before the follower component was added to the build step.
+            var selectGO = GameObject.Find("CharacterSelect");
+            if (selectGO == null) return;
+            if (selectGO.GetComponent<CardFanFollower>() == null)
+            {
+                var f = selectGO.AddComponent<CardFanFollower>();
+                f.distance = 0.6f;
+                f.eyeHeight = 1.45f;
             }
         }
     }

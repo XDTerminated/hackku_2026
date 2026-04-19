@@ -60,8 +60,13 @@ namespace HackKU.Game
             SetText("Name", p.characterName);
             SetText("Gimmick", string.IsNullOrEmpty(p.gimmickTag) ? "" : $"\"{p.gimmickTag}\"");
             SetText("Money", FormatMoney(p.startingMoney));
-            SetText("Happiness", $"{Mathf.RoundToInt(p.startingHappiness)} / 100");
+            SetText("Debt", FormatMoney(p.startingDebt));
+            SetText("Happiness", $"{Mathf.RoundToInt(p.startingHappiness)}%");
             SetText("Description", p.description);
+            SetText("Letter", GetInitial(p.characterName));
+
+            var accent = AccentForName(p.characterName);
+            TintChild("AccentStripe", accent);
 
             if (portraitImage != null && p.portrait != null)
             {
@@ -118,6 +123,42 @@ namespace HackKU.Game
         {
             string sign = amount < 0f ? "-" : "";
             return $"{sign}${Mathf.Abs(amount):N0}";
+        }
+
+        private static string GetInitial(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "?";
+            string trimmed = s.Trim();
+            // Skip "The " / "A " prefixes so class-style names grab the distinctive letter.
+            if (trimmed.Length >= 4 && trimmed.StartsWith("the ", System.StringComparison.InvariantCultureIgnoreCase))
+                trimmed = trimmed.Substring(4).TrimStart();
+            if (trimmed.Length >= 2 && trimmed.StartsWith("a ", System.StringComparison.InvariantCultureIgnoreCase))
+                trimmed = trimmed.Substring(2).TrimStart();
+            if (trimmed.Length == 0) return "?";
+            return char.ToUpperInvariant(trimmed[0]).ToString();
+        }
+
+        // Deterministic per-character accent color. Known names pick a curated palette;
+        // fall back to a hash-derived hue so new profiles still look distinct.
+        private static Color AccentForName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return new Color(0.7f, 0.85f, 1f);
+            string key = name.ToLowerInvariant();
+            if (key.Contains("student") || key.Contains("scholar") || key.Contains("grad")) return new Color(0.72f, 0.58f, 1f); // lavender
+            if (key.Contains("barista") || key.Contains("brewer")) return new Color(1f, 0.72f, 0.45f);  // warm orange
+            if (key.Contains("shark") || key.Contains("corporate")) return new Color(0.45f, 0.88f, 0.78f); // teal
+            int h = 0;
+            for (int i = 0; i < name.Length; i++) h = (h * 31 + name[i]) & 0x7fffffff;
+            float hue = (h % 360) / 360f;
+            return Color.HSVToRGB(hue, 0.45f, 1f);
+        }
+
+        private void TintChild(string childName, Color color)
+        {
+            Transform child = FindChildRecursive(transform, childName);
+            if (child == null) return;
+            var img = child.GetComponent<Image>();
+            if (img != null) img.color = color;
         }
     }
 }

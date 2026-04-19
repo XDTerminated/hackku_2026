@@ -77,6 +77,7 @@ namespace HackKU.Core
             inst.label = tpl.label;
             inst.baseAmount = tpl.amount;
             _live.Add(inst);
+            SfxHub.Instance.PlayAt("bill_drop", inst.transform.position, 0.85f);
             ToastHUD.Show("New bill", tpl.label + " — $" + Mathf.Round(tpl.amount), ToastKind.Info);
         }
 

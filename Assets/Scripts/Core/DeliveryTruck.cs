@@ -141,16 +141,18 @@ namespace HackKU.Core
         {
             float t = 0f;
             float dur = Mathf.Max(0.05f, seconds);
+            string engineKey = "van_engine_" + GetInstanceID();
+            SfxHub.Instance.StartLoopedOrOneShot(engineKey, "van_engine", 0.75f, loop: true, pitch: 0.9f);
             while (t < dur)
             {
                 t += Time.deltaTime;
                 float k = Mathf.Clamp01(t / dur);
-                // Ease in/out for a more truck-y feel.
                 float eased = k < 0.5f ? 2f * k * k : 1f - Mathf.Pow(-2f * k + 2f, 2f) * 0.5f;
                 transform.position = Vector3.Lerp(from, to, eased);
                 yield return null;
             }
             transform.position = to;
+            SfxHub.Instance.StopTracked(engineKey);
         }
 
         // Legacy one-shot drive-away — kept for existing callers.

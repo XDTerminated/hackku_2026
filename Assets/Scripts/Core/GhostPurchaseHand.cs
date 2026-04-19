@@ -43,6 +43,18 @@ namespace HackKU.Core
 
         void Update()
         {
+            // Suppress everything (UI + SFX + raycasts) until the player has picked a character.
+            var sm = StatsManager.Instance;
+            if (sm == null || sm.ActiveProfile == null)
+            {
+                if (_currentTarget != null) _currentTarget.CancelHold();
+                _currentTarget = null;
+                _cachedHit = null;
+                if (_ui != null) _ui.Hide();
+                SfxHub.Instance.StopTracked("ghostcharge_" + GetInstanceID());
+                return;
+            }
+
             // Physics queries are expensive; re-aim only every 3rd frame. At 90Hz VR
             // the worst-case staleness is ~33ms which is well below perceptible for
             // a hold-to-buy interaction.
@@ -79,14 +91,27 @@ namespace HackKU.Core
             }
 
             bool holding = (_buy != null && _buy.IsPressed()) || (_kbBuy != null && _kbBuy.IsPressed());
+            string sfxKey = "ghostcharge_" + GetInstanceID();
             if (holding)
             {
-                if (_currentTarget.HoldProgress01 <= 0f) _currentTarget.BeginHold();
+                bool wasCharging = _currentTarget.HoldProgress01 > 0f;
+                if (!wasCharging)
+                {
+                    _currentTarget.BeginHold();
+                    SfxHub.Instance.StartLoopedOrOneShot(sfxKey, "charge_start", 0.55f, loop: false);
+                }
                 _currentTarget.TickHold(Time.deltaTime);
             }
             else
             {
+                bool wasCharging = _currentTarget.HoldProgress01 > 0f;
                 _currentTarget.CancelHold();
+                if (wasCharging)
+                {
+                    SfxHub.Instance.StopTracked(sfxKey);
+                    if (!_currentTarget.IsOwned)
+                        SfxHub.Instance.PlayAt("charge_cancel", _currentTarget.transform.position, 0.55f);
+                }
             }
 
             if (_ui != null) _ui.Show(_currentTarget);

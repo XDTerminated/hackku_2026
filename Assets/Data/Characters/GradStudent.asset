@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
   m_Name: GradStudent
   m_EditorClassIdentifier:
-  characterName: Kai
+  characterName: The Student
   description: "Diploma in one hand, job offer in the other. The loans are average,
     the paycheck is average, the runway is yours to shape. Balance is the whole
     game."
@@ -23,5 +23,5 @@ MonoBehaviour:
   yearlyExpenses: 0
   yearlyHappinessRegen: 0
   gimmickTag: Balanced start
-  startingDebt: 3000
+  startingDebt: 8000
   paycheckDebtSplit: 0.3

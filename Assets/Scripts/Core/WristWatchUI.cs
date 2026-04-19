@@ -159,7 +159,7 @@ namespace HackKU.Core
             int rounded = Mathf.RoundToInt(m);
             return (rounded < 0 ? "-$" : "$") + Mathf.Abs(rounded).ToString("N0");
         }
-        static string FormatHappiness(float h) => HappinessEmoji(h);
+        static string FormatHappiness(float h) => HappinessEmoji(h) + " " + Mathf.RoundToInt(h) + "%";
 
         void HandleStats(StatsSnapshot s)
         {

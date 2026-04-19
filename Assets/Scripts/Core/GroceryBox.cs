@@ -17,7 +17,16 @@ namespace HackKU.Core
         [Tooltip("Billboarded TMP text that shows the quantity (set by the builder).")]
         public TMP_Text quantityLabel;
 
-        void Start() { RefreshLabel(); }
+        void Start()
+        {
+            RefreshLabel();
+            var grab = GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            if (grab != null)
+            {
+                grab.selectEntered.AddListener(_ => SfxHub.Instance.PlayAt("box_pickup", transform.position, 0.85f));
+                grab.selectExited.AddListener(_ => SfxHub.Instance.PlayAt("box_drop", transform.position, 0.7f));
+            }
+        }
 
         public void RefreshLabel()
         {
@@ -111,6 +120,7 @@ namespace HackKU.Core
         void Split()
         {
             _split = true;
+            SfxHub.Instance.PlayAt("box_drop", transform.position, 0.9f);
             var hasAny = itemPrefab != null || (itemPrefabPool != null && itemPrefabPool.Length > 0);
             if (!hasAny || quantity <= 0)
             {

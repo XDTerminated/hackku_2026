@@ -484,7 +484,10 @@ namespace HackKU.AI
             string t = text.ToLowerInvariant();
             return t.Contains("invest") || t.Contains("stocks") || t.Contains("stock market") ||
                    t.Contains("brokerage") || t.Contains("broker") || t.Contains("mutual fund") ||
-                   t.Contains("index fund") || t.Contains("buy shares");
+                   t.Contains("index fund") || t.Contains("buy shares") ||
+                   t.Contains("portfolio") || t.Contains("into the market") ||
+                   t.Contains("in the market") || t.Contains("into stocks") ||
+                   t.Contains("deposit") && (t.Contains("market") || t.Contains("portfolio") || t.Contains("stock"));
         }
 
         static bool IsWithdrawIntent(string text)
@@ -603,20 +606,39 @@ namespace HackKU.AI
             }
 
             bool firstTurn = true;
-            string pending = firstText;
+            string pending = firstText ?? "";
+            string reroute = null;
 
             while (!ct.IsCancellationRequested)
             {
-                // Route on intent first — these sub-flows also handle their own ack.
-                if (IsWithdrawIntent(pending)) { yield return RunWithdrawCall(pending, ct); }
-                else if (IsInvestIntent(pending)) { yield return RunInvestCall(pending, ct); }
-                else if (MentionsLoan(pending) || (firstTurn && !string.IsNullOrWhiteSpace(pending)))
+                string u = pending ?? "";
+
+                // Explicit intent keywords always win and route directly.
+                if (IsWithdrawIntent(u))
                 {
-                    yield return HandleLoanPayment(pending, sm, im, voice, ct);
+                    yield return RunWithdrawCall(u, ct);
+                }
+                else if (IsInvestIntent(u))
+                {
+                    yield return RunInvestCall(u, ct);
+                }
+                // Loan only if the utterance explicitly talks about loan/debt. Bare
+                // amounts no longer silently assume loan — that caused "invest 3000"
+                // to get misrouted to a loan payment when ASR dropped the "invest" word.
+                else if (MentionsLoan(u))
+                {
+                    yield return HandleLoanPayment(u, sm, im, voice, ct, r => reroute = r);
+                    if (!string.IsNullOrEmpty(reroute))
+                    {
+                        pending = reroute;
+                        reroute = null;
+                        firstTurn = false;
+                        continue;
+                    }
                 }
                 else
                 {
-                    // Ask what they want.
+                    // No clear intent — always greet and ask. Don't silently assume loan.
                     string greeting = firstTurn
                         ? (sm.Debt > 0f
                             ? "Hello, this is the bank. Would you like to pay down your loan, invest money, or cash out investments today?"
@@ -635,7 +657,7 @@ namespace HackKU.AI
                 // After a completed action — offer another, exit on goodbye.
                 firstTurn = false;
                 string reply = null;
-                yield return Prompt("Anything else? I can take another loan payment, invest, or cash out — or say goodbye.", voice, ct, r => reply = r);
+                yield return Prompt("Anything else? Loan, invest, cash out — or say goodbye.", voice, ct, r => reply = r);
                 if (ct.IsCancellationRequested) yield break;
                 reply = reply ?? string.Empty;
                 if (IsGoodbye(reply) || string.IsNullOrWhiteSpace(reply)) break;
@@ -645,8 +667,32 @@ namespace HackKU.AI
             yield return Say("Thanks for calling — take care.", voice, ct, _ => { });
         }
 
+        // Recognizes "pay it off", "the rest of it", "in full", "remainder", "everything"
+        // (in a loan context) and returns the outstanding debt. Falls through to combo
+        // + numeric parsing otherwise.
+        static float ParseLoanAmount(string text, float debt, float checking, float invested)
+        {
+            if (string.IsNullOrWhiteSpace(text) || debt <= 0f) return 0f;
+            string t = text.ToLowerInvariant();
+            if (t.Contains("pay it off") || t.Contains("pay off") || t.Contains("paid off") ||
+                t.Contains("the rest") || t.Contains("rest of it") || t.Contains("rest of my") ||
+                t.Contains("rest off") || t.Contains("full balance") || t.Contains("in full") ||
+                t.Contains("remainder") || t.Contains("remaining") ||
+                t.Contains("entire loan") || t.Contains("entire debt") ||
+                t.Contains("whole loan") || t.Contains("whole thing") || t.Contains("all of it"))
+                return debt;
+
+            float combo = ParseComboAmount(text, checking, invested);
+            if (combo > 0f) return combo;
+            return ParseDollarAmount(text);
+        }
+
         // One loan-payment transaction. Handles combo amounts by auto-liquidating investments if needed.
-        IEnumerator HandleLoanPayment(string utterance, StatsManager sm, InvestmentManager im, NPCVoiceProfile voice, CancellationToken ct)
+        // If the player shifts intent mid-turn (says "actually invest …" / "sell my stocks"), we abort
+        // and hand the utterance back via onReroute so RunBankCall's loop picks it up.
+        IEnumerator HandleLoanPayment(string utterance, StatsManager sm, InvestmentManager im,
+                                       NPCVoiceProfile voice, CancellationToken ct,
+                                       System.Action<string> onReroute)
         {
             if (sm.Debt <= 0f)
             {
@@ -656,25 +702,31 @@ namespace HackKU.AI
 
             float checking = sm.Money;
             float invested = im != null ? im.Invested : 0f;
-            float amount = ParseComboAmount(utterance, checking, invested);
-            bool wantsAll = amount > 0f;
-            if (amount <= 0f) amount = ParseDollarAmount(utterance);
+            float amount = ParseLoanAmount(utterance, sm.Debt, checking, invested);
+            bool wantsAll = amount >= sm.Debt;
 
             int attempts = 0;
             while (amount <= 0f && attempts < 3 && !ct.IsCancellationRequested)
             {
                 string prompt = attempts == 0
-                    ? "How much would you like to pay on your loan today?"
-                    : "Sorry, I didn't catch an amount — how many dollars toward your loan?";
+                    ? "How much would you like to pay on your loan today? You can say a dollar amount, or 'pay it all off'."
+                    : "Sorry, I didn't catch an amount — how many dollars toward your loan? Or 'all of it' to clear the balance.";
                 string reply = null;
                 yield return Prompt(prompt, voice, ct, r => reply = r);
                 if (ct.IsCancellationRequested) yield break;
                 reply = reply ?? "";
                 if (IsGoodbye(reply)) yield break;
+
+                // Mid-flow intent switch — hand it back to the outer bank loop.
+                if (IsInvestIntent(reply) || IsWithdrawIntent(reply))
+                {
+                    onReroute?.Invoke(reply);
+                    yield break;
+                }
+
                 checking = sm.Money; invested = im != null ? im.Invested : 0f;
-                amount = ParseComboAmount(reply, checking, invested);
-                wantsAll = amount > 0f;
-                if (amount <= 0f) amount = ParseDollarAmount(reply);
+                amount = ParseLoanAmount(reply, sm.Debt, checking, invested);
+                wantsAll = amount >= sm.Debt;
                 attempts++;
             }
             if (amount <= 0f)
@@ -711,8 +763,24 @@ namespace HackKU.AI
             ack += sm.Debt > 0f
                 ? ". Remaining balance is about $" + Mathf.RoundToInt(sm.Debt) + "."
                 : ". That clears your loan entirely — congratulations.";
-            yield return Say(ack, voice, ct, _ => { });
+            string interruptedReply = null;
+            yield return SayCatchBargeIn(ack, voice, ct, r => interruptedReply = r);
+            if (!string.IsNullOrWhiteSpace(interruptedReply))
+                onReroute?.Invoke(interruptedReply);
             _ = wantsAll;
+        }
+
+        // Like Say, but if the player interrupts during speech we capture what they said
+        // and return it so the caller can route it immediately. If the player stays quiet,
+        // returns empty — caller can then ask its own follow-up ("Anything else?").
+        IEnumerator SayCatchBargeIn(string line, NPCVoiceProfile voice, CancellationToken ct, System.Action<string> onReply)
+        {
+            bool interrupted = false;
+            yield return SpeakInterruptible(line, voice, ct, b => interrupted = b);
+            if (!interrupted) { onReply?.Invoke(""); yield break; }
+            string reply = null;
+            yield return ListenOnce(ct, 8f, r => reply = r);
+            onReply?.Invoke(reply ?? "");
         }
 
         // Speak a line while allowing barge-in; caller doesn't need to listen after.
@@ -929,39 +997,55 @@ namespace HackKU.AI
             };
 
         // Parses "$500", "500 dollars", "five hundred", "two thousand", "1.5k" — best effort.
+        // Returns the LARGEST candidate amount found in the utterance to avoid picking up
+        // stray numbers ("got 3 to invest, 3000 please" → 3000, not 3).
         static float ParseDollarAmount(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return 0f;
             string t = text.ToLowerInvariant();
+            // Normalize "3 000", "3 , 000" variants into "3000".
+            string normalized = System.Text.RegularExpressions.Regex.Replace(t, @"(\d)[\s,](\d{3}\b)", "$1$2");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"(\d)[\s,](\d{3}\b)", "$1$2");
 
-            // Numeric forms first.
-            var numMatch = System.Text.RegularExpressions.Regex.Match(
-                t, @"\$?\s*(\d{1,3}(?:[,]\d{3})*|\d+)(?:\.(\d+))?\s*(k|thousand|grand)?");
-            if (numMatch.Success)
+            float best = 0f;
+
+            // All numeric candidates (with optional k/thousand/grand suffix).
+            var matches = System.Text.RegularExpressions.Regex.Matches(
+                normalized, @"\$?\s*(\d+)(?:\.(\d+))?\s*(k|thousand|grand)?");
+            foreach (System.Text.RegularExpressions.Match m in matches)
             {
-                string whole = numMatch.Groups[1].Value.Replace(",", "");
-                string frac = numMatch.Groups[2].Value;
-                string suffix = numMatch.Groups[3].Value;
-                if (float.TryParse(whole, out float w))
-                {
-                    float val = w;
-                    if (!string.IsNullOrEmpty(frac) && float.TryParse("0." + frac, out float f)) val += f;
-                    if (suffix == "k" || suffix == "thousand" || suffix == "grand") val *= 1000f;
-                    return val;
-                }
+                if (!m.Success) continue;
+                if (!float.TryParse(m.Groups[1].Value, out float w)) continue;
+                float val = w;
+                if (m.Groups[2].Success && float.TryParse("0." + m.Groups[2].Value, out float f)) val += f;
+                string suffix = m.Groups[3].Value;
+                if (suffix == "k" || suffix == "thousand" || suffix == "grand") val *= 1000f;
+                if (val > best) best = val;
             }
 
-            // Word form — "five hundred", "two thousand five hundred".
+            // Word form — "five hundred", "two thousand five hundred". Capture every
+            // sub-expression so "a hundred and five, actually two thousand" picks 2000.
             float total = 0f, current = 0f;
+            float bestWord = 0f;
+            void FlushToBest()
+            {
+                float combined = total + current;
+                if (combined > bestWord) bestWord = combined;
+            }
             foreach (var tok in System.Text.RegularExpressions.Regex.Split(t, @"[^a-z]+"))
             {
                 if (string.IsNullOrEmpty(tok)) continue;
                 if (_scalarWords.TryGetValue(tok, out int n)) { current += n; continue; }
                 if (tok == "hundred") { current = (current == 0 ? 1 : current) * 100; continue; }
-                if (tok == "thousand") { total += (current == 0 ? 1 : current) * 1000; current = 0; continue; }
-                if (tok == "million") { total += (current == 0 ? 1 : current) * 1000000; current = 0; continue; }
+                if (tok == "thousand") { total += (current == 0 ? 1 : current) * 1000; current = 0; FlushToBest(); continue; }
+                if (tok == "million") { total += (current == 0 ? 1 : current) * 1000000; current = 0; FlushToBest(); continue; }
+                // Any other word — if we accumulated a value, lock it in and reset.
+                if (total + current > 0f) { FlushToBest(); total = 0f; current = 0f; }
             }
-            return total + current;
+            FlushToBest();
+            if (bestWord > best) best = bestWord;
+
+            return best;
         }
 
         string Sanitize(string s)

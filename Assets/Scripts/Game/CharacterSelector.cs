@@ -93,8 +93,10 @@ namespace HackKU.Game
 
                 Vector3 localOffset = new Vector3(Mathf.Sin(rad) * radius, heightOffset, Mathf.Cos(rad) * radius);
                 Vector3 worldPos = cardAnchor.TransformPoint(localOffset);
-                // Face the anchor — cards should look back toward the player.
-                Quaternion worldRot = Quaternion.LookRotation(cardAnchor.position - worldPos, cardAnchor.up);
+                // World-space canvas renders its UI on the +Z side, so the card's
+                // forward needs to point AWAY from the player (putting the front face
+                // toward the player). Mirror the anchor's forward for each card.
+                Quaternion worldRot = Quaternion.LookRotation(worldPos - cardAnchor.position, Vector3.up);
 
                 GameObject cardGO = Instantiate(cardPrefab, worldPos, worldRot, cardAnchor);
                 cardGO.name = $"Card_{profile.characterName}";

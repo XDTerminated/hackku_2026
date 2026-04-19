@@ -132,11 +132,20 @@ namespace HackKU.Core
             return b;
         }
 
-        public bool BeginHold() { if (IsOwned) return false; HoldProgress01 = 0f; return true; }
+        public bool BeginHold()
+        {
+            if (IsOwned) return false;
+            var sm = StatsManager.Instance;
+            if (sm == null || sm.ActiveProfile == null) return false;
+            HoldProgress01 = 0f;
+            return true;
+        }
 
         public bool TickHold(float dt)
         {
             if (IsOwned) return false;
+            var sm = StatsManager.Instance;
+            if (sm == null || sm.ActiveProfile == null) { HoldProgress01 = 0f; return false; }
             HoldProgress01 = Mathf.Clamp01(HoldProgress01 + dt / Mathf.Max(0.1f, holdSecondsToBuy));
             if (HoldProgress01 >= 1f) { TryPurchase(); return true; }
             return false;
@@ -149,6 +158,8 @@ namespace HackKU.Core
             if (IsOwned) return false;
             var sm = StatsManager.Instance;
             if (sm == null) return false;
+            // Furniture can only be bought once the player has chosen a character.
+            if (sm.ActiveProfile == null) { HoldProgress01 = 0f; return false; }
             if (sm.Money < price)
             {
                 ToastHUD.Show("Not enough money", displayName + " costs $" + Mathf.Round(price), ToastKind.Bill);

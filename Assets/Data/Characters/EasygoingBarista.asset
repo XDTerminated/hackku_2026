@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af36d738a80caa14e83977f3b7f01b5b, type: 3}
   m_Name: EasygoingBarista
   m_EditorClassIdentifier:
-  characterName: Zoe
+  characterName: The Barista
   description: "Scholarships kept the debt small, but so did the paycheck. You live
     cheap, laugh often, and own your time \u2014 the loans just need patience."
   portrait: {fileID: 0}
@@ -22,5 +22,5 @@ MonoBehaviour:
   yearlyExpenses: 0
   yearlyHappinessRegen: 2
   gimmickTag: Low debt, high happiness
-  startingDebt: 2500
+  startingDebt: 5000
   paycheckDebtSplit: 0.2

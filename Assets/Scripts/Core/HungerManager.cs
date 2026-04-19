@@ -41,6 +41,9 @@ namespace HackKU.Core
         void Update()
         {
             if (drainPerSecond <= 0f) return;
+            // Pause drain until the player has picked a character.
+            var sm = StatsManager.Instance;
+            if (sm == null || sm.ActiveProfile == null) return;
             float prev = Hunger;
             Hunger = Mathf.Max(0f, Hunger - drainPerSecond * Time.deltaTime);
             if (!Mathf.Approximately(prev, Hunger))

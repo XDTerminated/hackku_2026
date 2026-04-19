@@ -97,6 +97,8 @@ namespace HackKU.Core
                 : happinessDelta;
             happiness = Mathf.Clamp(happiness + scaledHappiness, 0f, 100f);
             lastReason = reason;
+            if (moneyDelta <= -1f && reason != "init")
+                HackKU.Core.SfxHub.Instance.Play("cha_ching", 0.7f);
             RaiseStatsChanged();
             CheckGameOver();
         }
@@ -117,6 +119,7 @@ namespace HackKU.Core
             money -= amount;
             debt = Mathf.Max(0f, debt - amount);
             lastReason = reason;
+            HackKU.Core.SfxHub.Instance.Play("cha_ching", 0.7f);
             RaiseStatsChanged();
             CheckWin();
         }
@@ -161,6 +164,8 @@ namespace HackKU.Core
         private void Update()
         {
             if (gameOverFired) return;
+            // Do not evaluate loss conditions until the player has actually picked a character.
+            if (activeProfile == null) { _moneyBelowSince = -1f; _happinessBelowSince = -1f; return; }
 
             if (money < moneyLossThreshold)
             {
