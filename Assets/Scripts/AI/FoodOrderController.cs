@@ -30,6 +30,7 @@ namespace HackKU.AI
         [SerializeField] NPCVoiceProfile fancyVoice;
         [SerializeField] NPCVoiceProfile fastFoodVoice;
         [SerializeField] NPCVoiceProfile bankVoice;
+        [SerializeField] NPCVoiceProfile brokerVoice;
 
         [Header("Grocery box (spawns as 1 box that splits on floor impact)")]
         [SerializeField] GameObject groceryBoxPrefab;
@@ -143,7 +144,23 @@ namespace HackKU.AI
 
             string text = (sttTask.Result ?? string.Empty).Trim();
 
-            // Bank intent first — if the player's first utterance already contains an
+            // Withdraw intent — pulling money out of the market back into Checking.
+            // Evaluated before "invest" so phrases like "sell my stocks" don't get
+            // swallowed by the broader invest matcher.
+            if (IsWithdrawIntent(text))
+            {
+                yield return RunWithdrawCall(text, ct);
+                EndOrder();
+                yield break;
+            }
+            // Invest intent — routing to the brokerage flow.
+            if (IsInvestIntent(text))
+            {
+                yield return RunInvestCall(text, ct);
+                EndOrder();
+                yield break;
+            }
+            // Bank intent — if the player's first utterance already contains an
             // amount we skip straight to payment; otherwise we greet them and listen again.
             if (IsBankIntent(text))
             {
@@ -165,7 +182,7 @@ namespace HackKU.AI
 
             if (picked == null)
             {
-                SpeakLine("Sorry, I didn't catch that. Try: groceries, pizza, dinner, fast food, or say 'bank' to pay loans.", groceryVoice);
+                SpeakLine("Sorry, I didn't catch that. Try: groceries, pizza, dinner, fast food, say 'bank' to pay loans, 'invest' to buy stocks, or 'sell' to cash out.", groceryVoice);
                 yield return new WaitForSeconds(0.4f);
                 while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
                 EndOrder();
@@ -403,6 +420,39 @@ namespace HackKU.AI
             return t == "bank" || t == "the bank" || t.StartsWith("call the bank") || t.StartsWith("bank please");
         }
 
+        static bool IsInvestIntent(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string t = text.ToLowerInvariant();
+            return t.Contains("invest") || t.Contains("stocks") || t.Contains("stock market") ||
+                   t.Contains("brokerage") || t.Contains("broker") || t.Contains("mutual fund") ||
+                   t.Contains("index fund") || t.Contains("buy shares");
+        }
+
+        static bool IsWithdrawIntent(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string t = text.ToLowerInvariant();
+            // "sell" / "cash out" / "liquidate" are unambiguous; "withdraw" only counts
+            // when paired with something market-flavored so it doesn't steal bank calls.
+            if (t.Contains("cash out") || t.Contains("cash in") || t.Contains("liquidate") ||
+                t.Contains("sell my") || t.Contains("sell everything") || t.Contains("sell all") ||
+                t.Contains("sell stocks") || t.Contains("sell the stocks") || t.Contains("pull out"))
+                return true;
+            if (t.Contains("withdraw") && (t.Contains("invest") || t.Contains("stock") ||
+                t.Contains("broker") || t.Contains("market") || t.Contains("all")))
+                return true;
+            return false;
+        }
+
+        static bool MentionsAll(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string t = text.ToLowerInvariant();
+            return System.Text.RegularExpressions.Regex.IsMatch(
+                t, @"\b(all|everything|entire|max|maximum|whole)\b");
+        }
+
         IEnumerator RunBankCall(string firstText, CancellationToken ct)
         {
             var sm = StatsManager.Instance;
@@ -478,6 +528,145 @@ namespace HackKU.AI
             SpeakLine(Sanitize(ack), voice);
             while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
         }
+
+        // --- Brokerage (invest) flow ---------------------------------------------------
+
+        IEnumerator RunInvestCall(string firstText, CancellationToken ct)
+        {
+            var sm = StatsManager.Instance;
+            var im = InvestmentManager.Instance;
+            NPCVoiceProfile voice = brokerVoice != null ? brokerVoice : (bankVoice != null ? bankVoice : groceryVoice);
+
+            if (sm == null || im == null)
+            {
+                SpeakLine("Sorry, the market desk is down. Please call back.", voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield break;
+            }
+
+            bool wantsAll = MentionsAll(firstText);
+            float amount = wantsAll ? sm.Money : ParseDollarAmount(firstText);
+
+            if (amount <= 0f && !wantsAll)
+            {
+                string greeting = "Hi, this is the brokerage. Your checking balance is about " +
+                                  SpokenDollars(sm.Money) + ". How much would you like to invest today?";
+                SpeakLine(greeting, voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield return new WaitForSeconds(0.2f);
+
+                string reply = null;
+                yield return ListenOnce(ct, 8f, r => reply = r);
+                if (ct.IsCancellationRequested) yield break;
+                wantsAll = MentionsAll(reply ?? "");
+                amount = wantsAll ? sm.Money : ParseDollarAmount(reply ?? "");
+
+                if (amount <= 0f)
+                {
+                    SpeakLine("No dollar amount came through. Give us a ring back when you're ready.", voice);
+                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                    yield break;
+                }
+            }
+
+            float applied = im.Deposit(amount);
+            if (applied <= 0f)
+            {
+                SpeakLine("Funds didn't clear, I'm afraid. Check your checking balance and call us back.", voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield break;
+            }
+
+            ToastHUD.Show("-$" + Mathf.Round(applied), "Invested", ToastKind.Bill);
+
+            string ackPrompt = "Respond as a friendly brokerage agent named Riley. The customer just invested $" +
+                               Mathf.Round(applied) + " in the market. Their invested balance is now about $" +
+                               Mathf.RoundToInt(im.Invested) + ". Confirm the trade in one warm sentence, " +
+                               "hint that values fluctuate, and sign off. Plain spoken English only.";
+            string ack = null;
+            var ackTask = SafeOneShot(ackPrompt, ct);
+            while (!ackTask.IsCompleted) yield return null;
+            if (!ct.IsCancellationRequested) ack = ackTask.Result;
+            if (string.IsNullOrWhiteSpace(ack))
+                ack = "Got it, $" + Mathf.Round(applied) + " invested. Your portfolio is about $" +
+                      Mathf.RoundToInt(im.Invested) + ". Markets move — we'll be here when you want to sell.";
+
+            SpeakLine(Sanitize(ack), voice);
+            while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+        }
+
+        IEnumerator RunWithdrawCall(string firstText, CancellationToken ct)
+        {
+            var sm = StatsManager.Instance;
+            var im = InvestmentManager.Instance;
+            NPCVoiceProfile voice = brokerVoice != null ? brokerVoice : (bankVoice != null ? bankVoice : groceryVoice);
+
+            if (sm == null || im == null)
+            {
+                SpeakLine("Sorry, the market desk is down. Please call back.", voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield break;
+            }
+
+            if (im.Invested <= 0f)
+            {
+                SpeakLine("Looks like you don't hold any positions right now. Nothing to sell.", voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield break;
+            }
+
+            bool wantsAll = MentionsAll(firstText);
+            float amount = wantsAll ? im.Invested : ParseDollarAmount(firstText);
+
+            if (amount <= 0f && !wantsAll)
+            {
+                string greeting = "Brokerage here. Your portfolio sits at about " +
+                                  SpokenDollars(im.Invested) + ". How much would you like to cash out?";
+                SpeakLine(greeting, voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield return new WaitForSeconds(0.2f);
+
+                string reply = null;
+                yield return ListenOnce(ct, 8f, r => reply = r);
+                if (ct.IsCancellationRequested) yield break;
+                wantsAll = MentionsAll(reply ?? "");
+                amount = wantsAll ? im.Invested : ParseDollarAmount(reply ?? "");
+
+                if (amount <= 0f)
+                {
+                    SpeakLine("Didn't catch a dollar amount. Call back when you're ready to sell.", voice);
+                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                    yield break;
+                }
+            }
+
+            float applied = im.Withdraw(amount);
+            if (applied <= 0f)
+            {
+                SpeakLine("Couldn't complete that — nothing to sell on this end.", voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield break;
+            }
+
+            ToastHUD.Show("+$" + Mathf.Round(applied), "Withdrew investment", ToastKind.Income);
+
+            string ackPrompt = "Respond as a friendly brokerage agent named Riley. The customer just cashed out $" +
+                               Mathf.Round(applied) + " from their portfolio. Remaining invested balance is about $" +
+                               Mathf.RoundToInt(im.Invested) + ". Confirm the sale in one warm sentence and sign off. " +
+                               "Plain spoken English only.";
+            string ack = null;
+            var ackTask = SafeOneShot(ackPrompt, ct);
+            while (!ackTask.IsCompleted) yield return null;
+            if (!ct.IsCancellationRequested) ack = ackTask.Result;
+            if (string.IsNullOrWhiteSpace(ack))
+                ack = "Done — $" + Mathf.Round(applied) + " is back in your checking. Portfolio is about $" +
+                      Mathf.RoundToInt(im.Invested) + ". Talk soon.";
+
+            SpeakLine(Sanitize(ack), voice);
+            while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+        }
+
+        static string SpokenDollars(float v) => "$" + Mathf.RoundToInt(v);
 
         // Opens the mic, waits for VAD end-of-speech (or timeout), transcribes, returns result.
         IEnumerator ListenOnce(CancellationToken ct, float maxListen, System.Action<string> onResult)

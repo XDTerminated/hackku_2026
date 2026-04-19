@@ -14,6 +14,12 @@ namespace HackKU.Core
         public TMP_Text hungerText;
         public TMP_Text debtText;
         public Image debtFillImage;
+        public TMP_Text investedText;
+
+        [Header("Invested colors")]
+        public Color investedUpColor = new Color(0.45f, 0.9f, 0.5f);
+        public Color investedDownColor = new Color(0.95f, 0.45f, 0.4f);
+        public Color investedIdleColor = new Color(0.8f, 0.8f, 0.85f);
 
         [Header("Animation")]
         [Tooltip("Pulse scale factor when a stat changes (non-passive).")]
@@ -24,11 +30,13 @@ namespace HackKU.Core
         float _prevMoney;
         float _prevHappiness;
         float _prevHunger;
+        float _investedTrendResetAt;
 
         void OnEnable()
         {
             StatsManager.OnStatsChanged += HandleStats;
             HungerManager.OnHungerChanged += HandleHunger;
+            InvestmentManager.OnInvestedChanged += HandleInvested;
             Refresh();
         }
 
@@ -36,6 +44,7 @@ namespace HackKU.Core
         {
             StatsManager.OnStatsChanged -= HandleStats;
             HungerManager.OnHungerChanged -= HandleHunger;
+            InvestmentManager.OnInvestedChanged -= HandleInvested;
         }
 
         void Update()
@@ -49,6 +58,13 @@ namespace HackKU.Core
                 int h = Mathf.RoundToInt(HungerManager.Instance.Hunger);
                 hungerText.text = "HUNGER " + h;
                 hungerText.color = HungerManager.Instance.IsLow ? new Color(1f, 0.45f, 0.3f) : new Color(0.95f, 0.75f, 0.5f);
+            }
+            if (investedText != null && InvestmentManager.Instance != null)
+            {
+                investedText.text = "INVESTED " + FormatMoney(InvestmentManager.Instance.Invested);
+                // Trend color fades back to idle a moment after the last tick.
+                if (Time.time >= _investedTrendResetAt)
+                    investedText.color = investedIdleColor;
             }
         }
 
@@ -111,6 +127,18 @@ namespace HackKU.Core
                 StartCoroutine(Pulse(hungerText.transform));
             }
             _prevHunger = newVal;
+        }
+
+        void HandleInvested(float newInvested, float delta)
+        {
+            if (investedText == null) return;
+            investedText.text = "INVESTED " + FormatMoney(newInvested);
+            if (delta > 0f) investedText.color = investedUpColor;
+            else if (delta < 0f) investedText.color = investedDownColor;
+            else investedText.color = investedIdleColor;
+            _investedTrendResetAt = Time.time + 0.9f;
+            // Pulse only on large deltas (deposits/withdrawals), not every tick.
+            if (Mathf.Abs(delta) >= 25f) StartCoroutine(Pulse(investedText.transform));
         }
 
         IEnumerator Pulse(Transform t)
