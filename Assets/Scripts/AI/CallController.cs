@@ -249,6 +249,7 @@ namespace HackKU.AI
                     {
                         moneyDelta = saidYes ? scenario.yesMoneyDelta : scenario.noMoneyDelta,
                         happinessDelta = saidYes ? scenario.yesHappinessDelta : scenario.noHappinessDelta,
+                        hygieneDelta = saidYes ? scenario.yesHygieneDelta : scenario.noHygieneDelta,
                         reason = saidYes ? scenario.yesReason : scenario.noReason,
                     };
                     ApplyOutcome(det);
@@ -559,6 +560,16 @@ namespace HackKU.AI
                 return;
             }
             stats.ApplyDelta(outcome.moneyDelta, outcome.happinessDelta, outcome.reason);
+
+            // Hygiene side-effect (dentist, doctor, etc). Silent unless the scenario authored one.
+            if (Mathf.Abs(outcome.hygieneDelta) >= 0.5f && HackKU.Core.HygieneManager.Instance != null)
+            {
+                HackKU.Core.HygieneManager.Instance.ApplyDelta(outcome.hygieneDelta, outcome.reason);
+                string sign = outcome.hygieneDelta > 0f ? "+" : "-";
+                string hyg = sign + Mathf.RoundToInt(Mathf.Abs(outcome.hygieneDelta));
+                HackKU.Core.ToastHUD.Show(hyg, "Hygiene — " + (string.IsNullOrWhiteSpace(outcome.reason) ? "Call" : outcome.reason),
+                    outcome.hygieneDelta > 0f ? HackKU.Core.ToastKind.HappinessUp : HackKU.Core.ToastKind.HappinessDown);
+            }
 
             // Fire HUD toasts so the player sees the result of the call on the top-right.
             string label = string.IsNullOrWhiteSpace(outcome.reason) ? (_activeScenario != null ? _activeScenario.callerName : "Call") : outcome.reason;

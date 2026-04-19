@@ -50,5 +50,11 @@ namespace HackKU.AI
         [Tooltip("Delta applied to Happiness when the player declines.")]
         public float noHappinessDelta;
         public string noReason = "Declined the offer";
+
+        [Header("Hygiene (optional — for doctor/dentist style calls)")]
+        [Tooltip("Delta applied to Hygiene when the player commits (yes). Usually 0 for non-medical calls.")]
+        public float yesHygieneDelta;
+        [Tooltip("Delta applied to Hygiene when the player declines. Negative = skipped care.")]
+        public float noHygieneDelta;
     }
 }

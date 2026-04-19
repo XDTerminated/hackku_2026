@@ -13,6 +13,7 @@ namespace HackKU.AI
     {
         public float moneyDelta;
         public float happinessDelta;
+        public float hygieneDelta;
         public string reason;
     }
 }

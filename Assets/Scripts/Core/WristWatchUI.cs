@@ -15,6 +15,7 @@ namespace HackKU.Core
         public TMP_Text debtText;
         public Image debtFillImage;
         public TMP_Text investedText;
+        public TMP_Text hygieneText;
 
         [Header("Invested colors")]
         public Color investedUpColor = new Color(0.45f, 0.9f, 0.5f);
@@ -58,6 +59,12 @@ namespace HackKU.Core
                 int h = Mathf.RoundToInt(HungerManager.Instance.Hunger);
                 hungerText.text = "HUNGER " + h;
                 hungerText.color = HungerManager.Instance.IsLow ? new Color(1f, 0.45f, 0.3f) : new Color(0.95f, 0.75f, 0.5f);
+            }
+            if (HygieneManager.Instance != null && hygieneText != null)
+            {
+                int v = Mathf.RoundToInt(HygieneManager.Instance.Hygiene);
+                hygieneText.text = "HYGIENE " + v;
+                hygieneText.color = HygieneManager.Instance.IsLow ? new Color(1f, 0.5f, 0.5f) : new Color(0.6f, 0.85f, 1f);
             }
             if (investedText != null && InvestmentManager.Instance != null)
             {
