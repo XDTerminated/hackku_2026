@@ -16,6 +16,8 @@ namespace HackKU.Core
         InputAction _kbBuy;
         GhostFurnitureItem _currentTarget;
         GhostPurchaseUI _ui;
+        int _aimFrameOffset;
+        GhostFurnitureItem _cachedHit;
 
         void OnEnable()
         {
@@ -26,6 +28,8 @@ namespace HackKU.Core
                 _kbBuy = new InputAction("GhostBuyKB", InputActionType.Button, binding: "<Keyboard>/b");
                 _kbBuy.Enable();
             }
+            // Stagger left/right hand physics queries so they don't land on the same frame.
+            _aimFrameOffset = GetInstanceID() & 0x3;
         }
 
         void OnDisable()
@@ -39,7 +43,25 @@ namespace HackKU.Core
 
         void Update()
         {
-            GhostFurnitureItem hit = FindAimedGhost();
+            // Physics queries are expensive; re-aim only every 3rd frame. At 90Hz VR
+            // the worst-case staleness is ~33ms which is well below perceptible for
+            // a hold-to-buy interaction.
+            bool holdingNow = (_buy != null && _buy.IsPressed()) || (_kbBuy != null && _kbBuy.IsPressed());
+            GhostFurnitureItem hit;
+            if (holdingNow && _cachedHit != null && !_cachedHit.IsOwned)
+            {
+                // While committed to a buy, don't re-raycast — stay locked on.
+                hit = _cachedHit;
+            }
+            else if (((Time.frameCount + _aimFrameOffset) % 3) == 0 || _cachedHit == null)
+            {
+                hit = FindAimedGhost();
+                _cachedHit = hit;
+            }
+            else
+            {
+                hit = _cachedHit;
+            }
 
             if (hit != _currentTarget)
             {

@@ -11,19 +11,31 @@ namespace HackKU.Core
         public TMP_Text label;
         public GameObject root;
 
+        int _shownSecs = int.MinValue;
+        string _shownName;
+
         void Update()
         {
             bool active = DeliveryState.HasPending;
-            if (root != null && root.activeSelf != active) root.SetActive(active);
+            if (root != null && root.activeSelf != active)
+            {
+                root.SetActive(active);
+                if (!active) { _shownSecs = int.MinValue; _shownName = null; }
+            }
             if (!active) return;
 
             if (label != null)
             {
-                float secs = Mathf.Max(0f, DeliveryState.Remaining);
+                int secs = Mathf.CeilToInt(Mathf.Max(0f, DeliveryState.Remaining));
                 string name = string.IsNullOrEmpty(DeliveryState.Label)
                     ? "Delivery"
                     : DeliveryState.Label;
-                label.text = "DELIVERY: " + name + " — " + Mathf.CeilToInt(secs) + "s";
+                if (secs != _shownSecs || !ReferenceEquals(name, _shownName))
+                {
+                    _shownSecs = secs;
+                    _shownName = name;
+                    label.text = "DELIVERY: " + name + " — " + secs + "s";
+                }
             }
         }
     }

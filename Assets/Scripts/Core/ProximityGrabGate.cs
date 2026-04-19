@@ -17,7 +17,8 @@ namespace HackKU.Core
         public float checkInterval = 0.1f;
 
         XRGrabInteractable grab;
-        Transform[] interactorPoints;
+        static Transform[] s_interactorPoints;
+        static float s_nextRescanAt;
         float nextCheck;
 
         void Awake()
@@ -27,14 +28,19 @@ namespace HackKU.Core
 
         void OnEnable()
         {
-            RefreshInteractorCache();
+            EnsureInteractorCache();
         }
 
-        void RefreshInteractorCache()
+        // Shared across all ProximityGrabGate instances so we don't run
+        // FindObjectsByType per-interactable. Rescanned at most once per 5s to pick up
+        // a late XR-rig spawn.
+        static void EnsureInteractorCache()
         {
+            if (s_interactorPoints != null && s_interactorPoints.Length > 0 && Time.unscaledTime < s_nextRescanAt) return;
             var nfs = Object.FindObjectsByType<NearFarInteractor>(FindObjectsSortMode.None);
-            interactorPoints = new Transform[nfs.Length];
-            for (int i = 0; i < nfs.Length; i++) interactorPoints[i] = nfs[i].transform;
+            s_interactorPoints = new Transform[nfs.Length];
+            for (int i = 0; i < nfs.Length; i++) s_interactorPoints[i] = nfs[i].transform;
+            s_nextRescanAt = Time.unscaledTime + 5f;
         }
 
         void Update()
@@ -42,14 +48,16 @@ namespace HackKU.Core
             if (Time.unscaledTime < nextCheck) return;
             nextCheck = Time.unscaledTime + checkInterval;
 
-            if (interactorPoints == null || interactorPoints.Length == 0) RefreshInteractorCache();
+            if (s_interactorPoints == null || s_interactorPoints.Length == 0) EnsureInteractorCache();
             if (grab.isSelected) return; // already held, don't toggle
 
+            var points = s_interactorPoints;
             float nearest = float.MaxValue;
-            for (int i = 0; i < interactorPoints.Length; i++)
+            Vector3 me = transform.position;
+            for (int i = 0; i < points.Length; i++)
             {
-                if (interactorPoints[i] == null) continue;
-                float d = Vector3.Distance(interactorPoints[i].position, transform.position);
+                if (points[i] == null) continue;
+                float d = Vector3.Distance(points[i].position, me);
                 if (d < nearest) nearest = d;
             }
 

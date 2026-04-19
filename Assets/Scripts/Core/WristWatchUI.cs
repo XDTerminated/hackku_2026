@@ -33,6 +33,21 @@ namespace HackKU.Core
         float _prevHunger;
         float _investedTrendResetAt;
 
+        // Guards so we only rewrite TMP text (which dirties mesh + allocates) when
+        // the integer-displayed value actually changes, not every frame.
+        int _shownYear = int.MinValue;
+        int _shownHunger = int.MinValue;
+        int _shownHygiene = int.MinValue;
+        int _shownInvested = int.MinValue;
+        bool _hungerLowShown;
+        bool _hygieneLowShown;
+        bool _investedTrendActive;
+
+        static readonly Color HungerLowColor = new Color(1f, 0.45f, 0.3f);
+        static readonly Color HungerOkColor = new Color(0.95f, 0.75f, 0.5f);
+        static readonly Color HygieneLowColor = new Color(1f, 0.5f, 0.5f);
+        static readonly Color HygieneOkColor = new Color(0.6f, 0.85f, 1f);
+
         void OnEnable()
         {
             StatsManager.OnStatsChanged += HandleStats;
@@ -50,28 +65,62 @@ namespace HackKU.Core
 
         void Update()
         {
-            if (TimeManager.Instance != null && yearText != null)
+            var tm = TimeManager.Instance;
+            if (tm != null && yearText != null && tm.CurrentYear != _shownYear)
             {
-                yearText.text = "YEAR " + TimeManager.Instance.CurrentYear;
+                _shownYear = tm.CurrentYear;
+                yearText.text = "YEAR " + _shownYear;
             }
-            if (HungerManager.Instance != null && hungerText != null)
+
+            var hm = HungerManager.Instance;
+            if (hm != null && hungerText != null)
             {
-                int h = Mathf.RoundToInt(HungerManager.Instance.Hunger);
-                hungerText.text = "HUNGER " + h;
-                hungerText.color = HungerManager.Instance.IsLow ? new Color(1f, 0.45f, 0.3f) : new Color(0.95f, 0.75f, 0.5f);
+                int h = Mathf.RoundToInt(hm.Hunger);
+                if (h != _shownHunger)
+                {
+                    _shownHunger = h;
+                    hungerText.text = "HUNGER " + h;
+                }
+                bool low = hm.IsLow;
+                if (low != _hungerLowShown)
+                {
+                    _hungerLowShown = low;
+                    hungerText.color = low ? HungerLowColor : HungerOkColor;
+                }
             }
-            if (HygieneManager.Instance != null && hygieneText != null)
+
+            var hyg = HygieneManager.Instance;
+            if (hyg != null && hygieneText != null)
             {
-                int v = Mathf.RoundToInt(HygieneManager.Instance.Hygiene);
-                hygieneText.text = "HYGIENE " + v;
-                hygieneText.color = HygieneManager.Instance.IsLow ? new Color(1f, 0.5f, 0.5f) : new Color(0.6f, 0.85f, 1f);
+                int v = Mathf.RoundToInt(hyg.Hygiene);
+                if (v != _shownHygiene)
+                {
+                    _shownHygiene = v;
+                    hygieneText.text = "HYGIENE " + v;
+                }
+                bool low = hyg.IsLow;
+                if (low != _hygieneLowShown)
+                {
+                    _hygieneLowShown = low;
+                    hygieneText.color = low ? HygieneLowColor : HygieneOkColor;
+                }
             }
-            if (investedText != null && InvestmentManager.Instance != null)
+
+            var im = InvestmentManager.Instance;
+            if (investedText != null && im != null)
             {
-                investedText.text = "INVESTED " + FormatMoney(InvestmentManager.Instance.Invested);
+                int inv = Mathf.RoundToInt(im.Invested);
+                if (inv != _shownInvested)
+                {
+                    _shownInvested = inv;
+                    investedText.text = "INVESTED " + FormatMoney(inv);
+                }
                 // Trend color fades back to idle a moment after the last tick.
-                if (Time.time >= _investedTrendResetAt)
+                if (_investedTrendActive && Time.time >= _investedTrendResetAt)
+                {
+                    _investedTrendActive = false;
                     investedText.color = investedIdleColor;
+                }
             }
         }
 
@@ -142,11 +191,17 @@ namespace HackKU.Core
         void HandleInvested(float newInvested, float delta)
         {
             if (investedText == null) return;
-            investedText.text = "INVESTED " + FormatMoney(newInvested);
+            int inv = Mathf.RoundToInt(newInvested);
+            if (inv != _shownInvested)
+            {
+                _shownInvested = inv;
+                investedText.text = "INVESTED " + FormatMoney(inv);
+            }
             if (delta > 0f) investedText.color = investedUpColor;
             else if (delta < 0f) investedText.color = investedDownColor;
             else investedText.color = investedIdleColor;
             _investedTrendResetAt = Time.time + 0.9f;
+            _investedTrendActive = true;
             // Pulse only on large deltas (deposits/withdrawals), not every tick.
             if (Mathf.Abs(delta) >= 25f) StartCoroutine(Pulse(investedText.transform));
         }

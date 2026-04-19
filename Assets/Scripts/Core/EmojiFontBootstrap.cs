@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -10,7 +11,10 @@ namespace HackKU.Core
     // asset from the OS's emoji font ("Segoe UI Emoji" on Windows, "Apple Color Emoji"
     // on macOS) at runtime and registers it as a global TMP fallback — after that,
     // any TMP text in the scene can contain real emoji.
-    [DefaultExecutionOrder(-10000)]
+    //
+    // The OS font scan + dynamic font asset creation takes 50–200ms on Windows, which
+    // used to block the pre-first-frame bootstrap. We now defer to after first frame so
+    // Play-mode entry isn't stalled. Cost: happiness emoji renders as tofu for one frame.
     public class EmojiFontBootstrap : MonoBehaviour
     {
         [Tooltip("OS fonts to try, in order, for emoji glyph fallback.")]
@@ -22,7 +26,11 @@ namespace HackKU.Core
 
         static bool _installed;
 
-        void Awake() { TryInstallEmojiFallback(); }
+        IEnumerator Start()
+        {
+            yield return null; // let the first frame render before we block on font I/O
+            TryInstallEmojiFallback();
+        }
 
         public static void TryInstallEmojiFallback()
         {

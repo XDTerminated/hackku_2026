@@ -13,15 +13,28 @@ namespace HackKU.Core
         DynamicMoveProvider _provider;
         float _originalSpeed;
         bool _captured;
+        float _nextResolveAt;
+
+        void Awake() { TryCapture(); }
+
+        void TryCapture()
+        {
+            _provider = Object.FindFirstObjectByType<DynamicMoveProvider>();
+            if (_provider == null) return;
+            _originalSpeed = _provider.moveSpeed;
+            _captured = true;
+        }
 
         void LateUpdate()
         {
             if (!_captured)
             {
-                _provider = Object.FindFirstObjectByType<DynamicMoveProvider>();
-                if (_provider == null) return;
-                _originalSpeed = _provider.moveSpeed;
-                _captured = true;
+                // Retry at most once per second so we don't re-scan every frame during
+                // the stretch before the XR rig spawns.
+                if (Time.unscaledTime < _nextResolveAt) return;
+                _nextResolveAt = Time.unscaledTime + 1f;
+                TryCapture();
+                if (!_captured) return;
             }
             if (_provider == null) return;
 

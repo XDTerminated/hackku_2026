@@ -29,8 +29,8 @@ namespace HackKU.AI
         public bool IsRecording => _turnActive;
         public float CurrentLevel { get; private set; }
 
-        [Tooltip("If true, opens the mic device once on Start() so the first phone ring doesn't stall while Windows/Quest initializes WASAPI.")]
-        [SerializeField] bool preWarmOnStart = true;
+        [Tooltip("If true, opens the mic device once on Start() so the first phone ring doesn't stall while Windows/Quest initializes WASAPI. Default off — the mic warms up on first Initialize call instead, so Play-mode entry isn't blocked by WASAPI init.")]
+        [SerializeField] bool preWarmOnStart = false;
 
         private void Start()
         {
@@ -145,7 +145,9 @@ namespace HackKU.AI
             int pos = Microphone.GetPosition(_deviceName);
             int delta = pos - _lastRmsSample;
             if (delta < 0) delta += _clip.samples;
-            if (delta < 256) return;
+            // Stride: wait for ~32ms of samples at 16kHz (512) before recomputing RMS.
+            // VAD thresholds don't need sub-frame accuracy and this halves the sum/sqrt work.
+            if (delta < 512) return;
             int count = Mathf.Min(delta, _rmsScratch.Length);
             int start = pos - count;
             if (start < 0) start += _clip.samples;

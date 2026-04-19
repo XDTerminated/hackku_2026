@@ -20,8 +20,37 @@ namespace HackKU.Core
         TMP_Text _labelText;
         CanvasGroup _cg;
         float _baseY;
+        Transform _camTf;
+        Vector3 _cachedAnchor;
+        bool _boundsCached;
+        bool _shownAlpha01;
+        Color _shownArrowColor;
+        string _shownLabel;
 
-        void Awake() { Build(); }
+        void Awake() { Build(); CacheAnchor(); ResolveCamera(); }
+
+        void ResolveCamera()
+        {
+            var cam = Camera.main;
+            _camTf = cam != null ? cam.transform : null;
+        }
+
+        void CacheAnchor()
+        {
+            if (target == null) { _cachedAnchor = transform.position; _boundsCached = false; return; }
+            Bounds b = new Bounds(target.transform.position, Vector3.zero);
+            bool first = true;
+            foreach (var r in target.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null) continue;
+                if (first) { b = r.bounds; first = false; }
+                else b.Encapsulate(r.bounds);
+            }
+            _cachedAnchor = first
+                ? target.transform.position
+                : new Vector3(b.center.x, b.max.y, b.center.z);
+            _boundsCached = !first;
+        }
 
         void Build()
         {
@@ -66,30 +95,15 @@ namespace HackKU.Core
         void LateUpdate()
         {
             if (_canvasGo == null) Build();
-
-            // Position above the target.
-            Vector3 anchor = target != null ? target.transform.position : transform.position;
-            // Use world bounds max if available so the marker sits above the object.
-            if (target != null)
-            {
-                Bounds b = new Bounds(anchor, Vector3.zero);
-                bool first = true;
-                foreach (var r in target.GetComponentsInChildren<Renderer>(true))
-                {
-                    if (r == null) continue;
-                    if (first) { b = r.bounds; first = false; }
-                    else b.Encapsulate(r.bounds);
-                }
-                anchor = new Vector3(b.center.x, b.max.y, b.center.z);
-            }
+            if (!_boundsCached && target != null) CacheAnchor();
 
             float bob = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
-            _canvasGo.transform.position = anchor + new Vector3(0f, heightAboveTarget + bob, 0f);
+            _canvasGo.transform.position = _cachedAnchor + new Vector3(0f, heightAboveTarget + bob, 0f);
 
-            var cam = Camera.main;
-            if (cam != null)
+            if (_camTf == null) ResolveCamera();
+            if (_camTf != null)
             {
-                Vector3 toCam = cam.transform.position - _canvasGo.transform.position;
+                Vector3 toCam = _camTf.position - _canvasGo.transform.position;
                 toCam.y = 0f;
                 if (toCam.sqrMagnitude > 0.0001f)
                     _canvasGo.transform.rotation = Quaternion.LookRotation(-toCam.normalized, Vector3.up);
@@ -97,10 +111,23 @@ namespace HackKU.Core
 
             // Hide when the target is bought.
             bool showing = target != null && !target.IsOwned;
-            if (_cg != null) _cg.alpha = showing ? 1f : 0f;
+            if (_cg != null)
+            {
+                bool shownBool = _cg.alpha > 0.5f;
+                if (showing != shownBool) _cg.alpha = showing ? 1f : 0f;
+            }
 
-            if (_arrowText != null) _arrowText.color = arrowColor;
-            if (_labelText != null) { _labelText.color = arrowColor; _labelText.text = label; }
+            if (_arrowText != null && _shownArrowColor != arrowColor)
+            {
+                _shownArrowColor = arrowColor;
+                _arrowText.color = arrowColor;
+                if (_labelText != null) _labelText.color = arrowColor;
+            }
+            if (_labelText != null && !ReferenceEquals(_shownLabel, label))
+            {
+                _shownLabel = label;
+                _labelText.text = label;
+            }
         }
     }
 }
