@@ -38,12 +38,17 @@ MonoBehaviour:
     player hears a clear sign-off (e.g. 'Love you \u2014 bye!' / 'See you Saturday!').
     Never call the tool and stay silent.\n\nCRITICAL \u2014 State the EXACT dollar
     amount and the EXACT benefit out loud in your opening pitch AND any time the
-    player asks. Use natural language ('it's four hundred bucks for the flowers,
+    player asks. Use natural language ('it's seventy-five bucks for the flowers,
     but it'd mean the world to her'). Do NOT hide the price. Do NOT be vague about
-    the trade-off.\n\nOutcomes \u2014 use EXACTLY these numbers:\n  - YES books the
-    getaway: money_delta -450, happiness_delta +11, reason \"Weekend getaway with
-    Taylor\".\n  - NO / declines: money_delta 0, happiness_delta -4, reason \"Passed
-    on the weekend getaway\"."
+    the trade-off.\n\nFRESH MEMORY \u2014 You have NO knowledge of any previous phone
+    call the player received. Do NOT reference, mention, hint at, or bring up topics,
+    people, amounts, or events from other callers (flowers, weddings, ski trips,
+    concerts, loans, bills, food orders, etc. are OFF-LIMITS unless it's YOUR scenario).
+    Only talk about what's relevant to YOUR caller and YOUR situation. This is a
+    standalone call.\n\nOutcomes \u2014 use EXACTLY these numbers:\n  - YES books
+    the getaway: money_delta -450, happiness_delta +11, reason \"Weekend getaway
+    with Taylor\".\n  - NO / declines: money_delta 0, happiness_delta -4, reason
+    \"Passed on the weekend getaway\"."
   openingLine: "Hey love, it's Taylor. I found us a cabin upstate for the weekend
     \u2014 four hundred and fifty dollars. We haven't done one of these in forever.
     What do you say?"
@@ -55,3 +60,5 @@ MonoBehaviour:
   noMoneyDelta: 0
   noHappinessDelta: -4
   noReason: Passed on the weekend getaway
+  yesHygieneDelta: 0
+  noHygieneDelta: 0

@@ -52,10 +52,17 @@ namespace HackKU.AI
 
         void OnEnable()
         {
+            if (phone == null)
+                phone = UnityEngine.Object.FindFirstObjectByType<HackKU.Core.RotaryPhone>();
             if (phone != null)
             {
                 phone.OnDialOutRequested += HandleDialOut;
                 phone.OnHungUp += HandleHungUp;
+                Debug.Log($"[FoodOrder] subscribed to RotaryPhone events on '{phone.gameObject.name}' (id={phone.GetInstanceID()})");
+            }
+            else
+            {
+                Debug.LogError("[FoodOrder] No RotaryPhone found — cannot subscribe to dial-out events!");
             }
         }
 
@@ -71,9 +78,10 @@ namespace HackKU.AI
 
         void HandleDialOut()
         {
-            if (IsOrderActive) return;
+            Debug.Log("[FoodOrder] HandleDialOut fired — player picked up handset for outgoing call.");
+            if (IsOrderActive) { Debug.Log("[FoodOrder] ...ignored: order already active."); return; }
             var cc = UnityEngine.Object.FindFirstObjectByType<CallController>();
-            if (cc != null && cc.IsCallActive) return;
+            if (cc != null && cc.IsCallActive) { Debug.Log("[FoodOrder] ...ignored: incoming call is active."); return; }
             if (npcVoice == null || mic == null) { Debug.LogError("[FoodOrderController] missing refs"); return; }
 
             IsOrderActive = true;
@@ -83,6 +91,7 @@ namespace HackKU.AI
 
         void HandleHungUp()
         {
+            Debug.Log($"[FoodOrder] HandleHungUp — phone was docked. IsOrderActive={IsOrderActive}");
             if (!IsOrderActive) return;
             EndOrder();
         }
@@ -99,10 +108,12 @@ namespace HackKU.AI
 
         IEnumerator Run(CancellationToken ct)
         {
+            Debug.Log("[FoodOrder] Run() coroutine entered — waiting for dial tone.");
             if (!mic.IsMicOpen) mic.InitializeRecording();
             yield return new WaitForSeconds(dialToneSeconds);
-            if (ct.IsCancellationRequested) yield break;
+            if (ct.IsCancellationRequested) { Debug.Log("[FoodOrder] cancelled during dial tone."); yield break; }
 
+            Debug.Log("[FoodOrder] starting mic recording, listening...");
             mic.StartRecording();
             float listenStart = Time.unscaledTime;
             const float maxListen = 8f;
@@ -129,8 +140,10 @@ namespace HackKU.AI
             }
 
             byte[] wav = mic.StopRecordingAndGetWav();
+            Debug.Log($"[FoodOrder] VAD loop exited. IsOrderActive={IsOrderActive} ct.IsCancellationRequested={ct.IsCancellationRequested} wavBytes={(wav != null ? wav.Length : 0)}");
             if (wav == null || wav.Length == 0)
             {
+                Debug.Log("[FoodOrder] Empty wav — speaking 'didnt catch you' and bailing.");
                 SpeakLine("Sorry, I didn't catch you there. Give us a call back.", groceryVoice);
                 yield return new WaitForSeconds(0.4f);
                 while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
@@ -138,11 +151,13 @@ namespace HackKU.AI
                 yield break;
             }
 
+            Debug.Log("[FoodOrder] transcribing...");
             var sttTask = SafeTranscribe(wav, ct);
             while (!sttTask.IsCompleted) yield return null;
-            if (ct.IsCancellationRequested) { EndOrder(); yield break; }
+            if (ct.IsCancellationRequested) { Debug.Log("[FoodOrder] cancelled during STT."); EndOrder(); yield break; }
 
             string text = (sttTask.Result ?? string.Empty).Trim();
+            Debug.Log($"[FoodOrder] STT heard: \"{text}\"");
 
             // Withdraw intent — pulling money out of the market back into Checking.
             // Evaluated before "invest" so phrases like "sell my stocks" don't get
@@ -199,17 +214,10 @@ namespace HackKU.AI
                 yield break;
             }
 
-            string ack = null;
-            var ackTask = SafeOneShot(BuildAckPrompt(picked, quantity), ct);
-            while (!ackTask.IsCompleted) yield return null;
-            if (!ct.IsCancellationRequested) ack = ackTask.Result;
-            if (string.IsNullOrWhiteSpace(ack))
-                ack = (quantity > 1 ? quantity + " " : "") + picked.displayName + " on the way.";
-
-            SpeakLine(Sanitize(ack), voice);
-
+            // --- COMMIT POINT -------------------------------------------------------
+            // Match is valid + funds are sufficient. Deduct money and LAUNCH DELIVERY NOW
+            // BEFORE any LLM speech, so hanging up mid-ack can never cancel the box spawn.
             string orderLabel = quantity > 1 ? ("Ordered " + quantity + "x " + picked.displayName) : ("Ordered " + picked.displayName);
-            // Ordering food gives a small happiness bump — treating yourself.
             float happinessBump = 3f + Mathf.Min(4f, quantity - 1);
             if (StatsManager.Instance != null)
             {
@@ -217,16 +225,48 @@ namespace HackKU.AI
                 ToastHUD.Show("-$" + Mathf.Round(totalPrice), orderLabel, ToastKind.Bill);
                 ToastHUD.Show("+" + Mathf.RoundToInt(happinessBump) + "%", "Treat yourself", ToastKind.HappinessUp);
             }
+            Debug.Log($"[FoodOrder] money deducted; launching detached delivery coroutine for {quantity}x {picked.displayName}");
+            DeliveryRunner.Run(DeliverAfterDelay(picked, quantity, deliveryDelaySeconds));
+            // ------------------------------------------------------------------------
 
-            yield return new WaitForSeconds(0.4f);
-            while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+            // Now speak the ack. Cancellation (handset docked) simply cuts the speech short;
+            // delivery is already on its way regardless.
+            string ack = null;
+            var ackTask = SafeOneShot(BuildAckPrompt(picked, quantity), ct);
+            while (!ackTask.IsCompleted) yield return null;
+            if (!ct.IsCancellationRequested) ack = ackTask.Result;
+            if (string.IsNullOrWhiteSpace(ack))
+                ack = "Your " + picked.displayName.ToLowerInvariant() + " will be there soon. Bye!";
 
-            // Wait the delivery delay inline so EndOrder can't cancel the spawn coroutine.
-            float waitStart = Time.unscaledTime;
-            while (!ct.IsCancellationRequested && Time.unscaledTime - waitStart < deliveryDelaySeconds)
-                yield return null;
-            if (!ct.IsCancellationRequested) SpawnDeliveryNow(picked, quantity);
+            if (!ct.IsCancellationRequested && IsOrderActive)
+            {
+                SpeakLine(Sanitize(ack), voice);
+                yield return new WaitForSeconds(0.4f);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+            }
             EndOrder();
+        }
+
+        IEnumerator DeliverAfterDelay(FoodItem item, int quantity, float delay)
+        {
+            HackKU.Core.DeliveryState.Label =
+                (quantity > 1 ? quantity + "x " : "") + (item != null ? item.displayName : "Delivery");
+            HackKU.Core.DeliveryState.Remaining = delay;
+            while (HackKU.Core.DeliveryState.Remaining > 0f)
+            {
+                HackKU.Core.DeliveryState.Remaining -= Time.unscaledDeltaTime;
+                yield return null;
+            }
+            HackKU.Core.DeliveryState.Remaining = 0f;
+            HackKU.Core.DeliveryState.Label = null;
+
+            // If a DeliveryTruck is in the scene (even hidden from a previous cycle), it pulls
+            // up to the curb and the box spawns on its pause callback; otherwise spawn directly.
+            var trucks = UnityEngine.Object.FindObjectsByType<HackKU.Core.DeliveryTruck>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var truck = trucks != null && trucks.Length > 0 ? trucks[0] : null;
+            if (truck != null) truck.DeliverCycle(() => SpawnDeliveryNow(item, quantity));
+            else SpawnDeliveryNow(item, quantity);
         }
 
         // Always resolve the drop point from the scene at spawn-time so a missing/destroyed
@@ -249,10 +289,12 @@ namespace HackKU.AI
 
         void SpawnDeliveryNow(FoodItem item, int quantity)
         {
+            Debug.Log($"[FoodOrder][spawn] ENTRY item={(item!=null?item.displayName:"null")} qty={quantity} groceryBoxPrefab={(groceryBoxPrefab!=null?groceryBoxPrefab.name:"NULL")}");
             if (item == null) { Debug.LogWarning("[FoodOrder] spawn aborted: item null"); return; }
             if (item.prefab == null) { Debug.LogWarning("[FoodOrder] spawn aborted: item.prefab null for " + item.displayName); return; }
 
             Vector3 dropPos = ResolveDeliveryPosition();
+            Debug.Log($"[FoodOrder][spawn] resolved dropPos={dropPos}");
             int count = Mathf.Clamp(quantity, 1, 10);
 
             // Every delivery — groceries, pizza, fancy, fast food — arrives as ONE sealed box
@@ -264,7 +306,9 @@ namespace HackKU.AI
                 return;
             }
             Vector3 boxPos = dropPos + Vector3.up * 0.2f;
+            Debug.Log($"[FoodOrder] Spawning {count}x {item.displayName} box at {boxPos}");
             var box = Instantiate(groceryBoxPrefab, boxPos, Quaternion.identity);
+            if (box == null) Debug.LogError("[FoodOrder] Instantiate returned null!");
             var gb = box.GetComponent<HackKU.Core.GroceryBox>();
             if (gb != null)
             {
@@ -291,11 +335,15 @@ namespace HackKU.AI
                 item.itemId == "fancy" ? "a fine-dining French maitre d named Laurent" :
                 item.itemId == "fast_food" ? "an energetic American fast-food cashier named Mike" :
                 "a friendly shopkeeper";
-            string qtyPart = quantity > 1 ? quantity + " of '" + item.displayName + "'" : "'" + item.displayName + "'";
-            return "Respond AS " + persona + ". The player just ordered " + qtyPart +
-                " for $" + Mathf.Round(item.price * quantity) + " total. Say a single natural short phone-call line (1-2 short sentences) " +
-                "confirming the order and giving a delivery time. Mention the quantity if it's more than one. Do NOT use asterisks, stage directions, emojis, or quotes. " +
-                "Plain spoken English only. End with a brief goodbye.";
+            string foodWord = item.displayName.ToLowerInvariant();
+            return "Respond AS " + persona + ". The player just ordered " + foodWord + ". " +
+                "Say ONE short declarative line following this exact pattern: say their " + foodWord +
+                " will be there soon, then a brief goodbye. That's it. " +
+                "DO NOT mention dollar amounts, quantity, specific times, dates, or minutes. " +
+                "DO NOT say things like 'a dozen items' or 'by 7pm' or 'in 20 minutes'. " +
+                "DO NOT ask questions or offer upgrades. " +
+                "Example good line: 'Your " + foodWord + " will be there soon, take care!'. " +
+                "No asterisks, stage directions, emojis, or quotes. Plain spoken English only.";
         }
 
         static readonly System.Collections.Generic.Dictionary<string, int> _numberWords =
@@ -361,7 +409,6 @@ namespace HackKU.AI
 
         IEnumerator SpawnDeliveryAfter(FoodItem item, int quantity, float delay)
         {
-            Debug.Log("[FoodOrder] scheduling delivery of " + quantity + "x " + (item != null ? item.displayName : "null") + " in " + delay + "s");
             yield return new WaitForSeconds(delay);
 
             if (item == null) { Debug.LogWarning("[FoodOrder] spawn aborted: item null"); yield break; }
@@ -413,6 +460,17 @@ namespace HackKU.AI
                    t.Contains("pay off") || t.Contains("pay down") || t.Contains("pay my");
         }
 
+        // "loan / debt / pay down / pay off / student" — banker should skip the loan-or-invest
+        // menu and go straight to loan payment.
+        static bool MentionsLoan(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string t = text.ToLowerInvariant();
+            return t.Contains("loan") || t.Contains("loans") || t.Contains("debt") ||
+                   t.Contains("pay off") || t.Contains("pay down") || t.Contains("pay my loan") ||
+                   t.Contains("student");
+        }
+
         static bool IsBankShortTrigger(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
@@ -439,9 +497,13 @@ namespace HackKU.AI
                 t.Contains("sell my") || t.Contains("sell everything") || t.Contains("sell all") ||
                 t.Contains("sell stocks") || t.Contains("sell the stocks") || t.Contains("pull out"))
                 return true;
-            if (t.Contains("withdraw") && (t.Contains("invest") || t.Contains("stock") ||
-                t.Contains("broker") || t.Contains("market") || t.Contains("all")))
+            // "take out" / "withdraw" / "pull" count when combined with something market-flavored.
+            bool marketish = t.Contains("invest") || t.Contains("stock") || t.Contains("broker") ||
+                             t.Contains("market") || t.Contains("portfolio") || t.Contains("shares");
+            if (marketish && (t.Contains("take out") || t.Contains("withdraw") || t.Contains("pull") ||
+                              t.Contains("take some") || t.Contains("get some") || t.Contains("get out")))
                 return true;
+            if (t.Contains("withdraw") && t.Contains("all")) return true;
             return false;
         }
 
@@ -465,6 +527,43 @@ namespace HackKU.AI
                 yield break;
             }
 
+            // If the player's first utterance clearly mentions investing, route to the
+            // broker flow so "call the bank, invest $500" works as a single call.
+            if (IsInvestIntent(firstText) || IsWithdrawIntent(firstText))
+            {
+                yield return IsWithdrawIntent(firstText) ? RunWithdrawCall(firstText, ct)
+                                                        : RunInvestCall(firstText, ct);
+                yield break;
+            }
+
+            // If no explicit intent, ask up front which the player wants — loan or invest.
+            bool routedToInvest = false;
+            if (!MentionsLoan(firstText))
+            {
+                string greeting = sm.Debt > 0f
+                    ? "Hello, this is the bank. Would you like to pay down your loan, invest money, or cash out some of your investments today?"
+                    : "Hello, this is the bank. Looks like your loan is already paid off — would you like to invest, or cash out some of your investments today?";
+                SpeakLine(greeting, voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield return new WaitForSeconds(0.2f);
+
+                string reply = null;
+                yield return ListenOnce(ct, 8f, r => reply = r);
+                if (ct.IsCancellationRequested) yield break;
+                reply = reply ?? string.Empty;
+
+                if (IsWithdrawIntent(reply)) { yield return RunWithdrawCall(reply, ct); yield break; }
+                if (IsInvestIntent(reply)) { yield return RunInvestCall(reply, ct); yield break; }
+                // No invest keywords + debt is zero → nothing to do.
+                if (sm.Debt <= 0f)
+                {
+                    SpeakLine("Alright, your loan is already clear. Give us a ring when you'd like to invest.", voice);
+                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                    yield break;
+                }
+                firstText = reply; // reuse whatever they said as the loan-amount seed
+            }
+
             if (sm.Debt <= 0f)
             {
                 SpeakLine("Good afternoon — looks like you're already paid off. Nothing more to do here. Have a good one.", voice);
@@ -472,26 +571,37 @@ namespace HackKU.AI
                 yield break;
             }
 
-            // Step 1: did the player's first utterance already include an amount?
+            // Step 1: did the player's utterance already include an amount?
             float amount = ParseDollarAmount(firstText);
+            _ = routedToInvest;
 
-            // Step 2: if not, greet them and listen for the amount.
+            // Step 2: if not, greet + listen. If we don't catch an amount, ask again up to 3 times
+            // before giving up. Player should never have to redial just because we misheard.
             if (amount <= 0f)
             {
-                string greeting = "Hello, this is the bank. How much would you like to pay on your loan today?";
-                SpeakLine(greeting, voice);
-                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
-                yield return new WaitForSeconds(0.2f);
+                string[] prompts =
+                {
+                    "Hello, this is the bank. How much would you like to pay on your loan today?",
+                    "Sorry, I didn't catch a dollar amount — how much would you like to pay?",
+                    "One more time, please — how many dollars toward your loan today?",
+                };
 
-                // Listen for the reply.
-                string reply = null;
-                yield return ListenOnce(ct, 8f, r => reply = r);
-                if (ct.IsCancellationRequested) yield break;
-                amount = ParseDollarAmount(reply ?? "");
+                for (int attempt = 0; attempt < prompts.Length && amount <= 0f; attempt++)
+                {
+                    SpeakLine(prompts[attempt], voice);
+                    while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                    if (ct.IsCancellationRequested) yield break;
+                    yield return new WaitForSeconds(0.2f);
+
+                    string reply = null;
+                    yield return ListenOnce(ct, 8f, r => reply = r);
+                    if (ct.IsCancellationRequested) yield break;
+                    amount = ParseDollarAmount(reply ?? "");
+                }
 
                 if (amount <= 0f)
                 {
-                    SpeakLine("Sorry, I didn't catch a dollar amount. Let's try that again — call back when you're ready.", voice);
+                    SpeakLine("Alright, no problem — give us a call back when you've decided. Take care.", voice);
                     while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
                     yield break;
                 }
@@ -540,6 +650,14 @@ namespace HackKU.AI
             if (sm == null || im == null)
             {
                 SpeakLine("Sorry, the market desk is down. Please call back.", voice);
+                while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
+                yield break;
+            }
+            // Gated: player must have purchased the Investment Board before the broker will
+            // take any new deposits. Existing holdings still tick & can be withdrawn.
+            if (!HackKU.Core.InvestmentManager.CanInvest)
+            {
+                SpeakLine("Looks like you don't have a trading desk set up yet. Get yourself an investment board and give us a ring back.", voice);
                 while (npcVoice.IsSpeaking && !ct.IsCancellationRequested) yield return null;
                 yield break;
             }

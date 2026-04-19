@@ -15,7 +15,9 @@ namespace HackKU.AI
         [Header("Cadence (real seconds)")]
         [SerializeField] float minGapSeconds = 10f;
         [SerializeField] float maxGapSeconds = 20f;
-        [SerializeField] float firstCallDelay = 5f;
+        [SerializeField] float firstCallDelay = 7f;
+
+        bool _characterArmed;
 
         [SerializeField] bool verboseLogging = true;
 
@@ -26,13 +28,26 @@ namespace HackKU.AI
 
         void OnEnable()
         {
-            ScheduleFromNow(firstCallDelay);
-            if (verboseLogging) Debug.Log("[CallDirector] Enabled, first call in " + firstCallDelay + "s");
+            // Don't schedule anything yet — wait until a character is picked and StatsManager
+            // is initialized, then arm the timer with firstCallDelay seconds of grace.
+            _characterArmed = false;
+            nextCallTime = float.MaxValue;
+            if (verboseLogging) Debug.Log("[CallDirector] Enabled — waiting for character selection.");
         }
 
         void Update()
         {
             if (callController == null || scenarios == null || scenarios.Length == 0) return;
+
+            // Wait for the player to pick a character (StatsManager gets an ActiveProfile).
+            if (!_characterArmed)
+            {
+                var sm = HackKU.Core.StatsManager.Instance;
+                if (sm == null || sm.ActiveProfile == null) return;
+                _characterArmed = true;
+                ScheduleFromNow(firstCallDelay);
+                if (verboseLogging) Debug.Log("[CallDirector] Character picked — first call in " + firstCallDelay + "s.");
+            }
 
             bool active = callController.IsCallActive;
 

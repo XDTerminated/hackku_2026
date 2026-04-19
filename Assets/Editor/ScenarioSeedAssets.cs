@@ -144,8 +144,12 @@ namespace HackKU.EditorTools
                 "NEVER call 'apply_outcome' until the player gives a clear, unambiguous yes or no in their own words. " +
                 "When you DO call apply_outcome, immediately speak ONE short in-character goodbye so the player hears a clear sign-off (e.g. 'Love you — bye!' / 'See you Saturday!'). Never call the tool and stay silent.\n\n" +
                 "CRITICAL — State the EXACT dollar amount and the EXACT benefit out loud in your opening pitch AND any time the player asks. " +
-                "Use natural language ('it's four hundred bucks for the flowers, but it'd mean the world to her'). " +
-                "Do NOT hide the price. Do NOT be vague about the trade-off.";
+                "Use natural language ('it's seventy-five bucks for the flowers, but it'd mean the world to her'). " +
+                "Do NOT hide the price. Do NOT be vague about the trade-off.\n\n" +
+                "FRESH MEMORY — You have NO knowledge of any previous phone call the player received. " +
+                "Do NOT reference, mention, hint at, or bring up topics, people, amounts, or events from other callers " +
+                "(flowers, weddings, ski trips, concerts, loans, bills, food orders, etc. are OFF-LIMITS unless it's YOUR scenario). " +
+                "Only talk about what's relevant to YOUR caller and YOUR situation. This is a standalone call.";
 
             return new[]
             {
@@ -155,20 +159,20 @@ namespace HackKU.EditorTools
                     fileName = "MomWedding",
                     scenarioId = "mom_wedding",
                     callerName = "Mom",
-                    situation = "Mom is asking you to chip in $400 for your sister's wedding flowers. Saying yes means being present for a family milestone.",
+                    situation = "Mom is asking you to chip in $75 for your sister's wedding centerpiece flowers — a small share of a bigger family gift.",
                     systemPrompt =
                         "You are roleplaying the player's MOTHER. Warm, loving, a little guilt-trippy. Never break character.\n\n" +
                         "Speech quirks: uses 'honey', 'sweetheart', 'you know?'. Speaks with emotion about family.\n\n" +
-                        "Goal: ask the player to chip in exactly $400 for your other child's wedding flowers. Say 'four hundred dollars' out loud clearly. " +
-                        "Explain why it matters — it's their sister's big day and they'd be part of making it beautiful. Don't pressure; let the guilt speak for itself.\n\n" +
+                        "Goal: ask the player to chip in exactly $75 toward the centerpiece flowers for your other child's wedding — a small share of what the whole family is contributing. Say 'seventy-five dollars' out loud clearly. " +
+                        "Explain why it matters — it's their sister's big day. Don't pressure; let the guilt speak for itself.\n\n" +
                         sharedToolRule + "\n\n" +
                         "Outcomes — use EXACTLY these numbers:\n" +
-                        "  - YES to chipping in: money_delta -400, happiness_delta +8, reason \"Helped pay for sister's wedding flowers\".\n" +
+                        "  - YES to chipping in: money_delta -75, happiness_delta +8, reason \"Helped pay for sister's wedding flowers\".\n" +
                         "  - NO / declines: money_delta 0, happiness_delta -4, reason \"Skipped chipping in on sister's wedding\".",
-                    openingLine = "Hi honey, it's Mom. I wanted to ask — the flower budget for your sister's wedding came out to four hundred dollars. Any chance you could chip in?",
+                    openingLine = "Hi honey, it's Mom. The centerpiece flowers for your sister's wedding came out to seventy-five dollars each — would you chip in on one?",
                     maxConversationSeconds = 90f,
                     maxTurns = 5,
-                    yesMoney = -400f, yesHappiness = 8f, yesReason = "Helped pay for sister's wedding flowers",
+                    yesMoney = -75f, yesHappiness = 8f, yesReason = "Helped pay for sister's wedding flowers",
                     noMoney = 0f, noHappiness = -4f, noReason = "Skipped chipping in on sister's wedding",
                 },
                 // 2) Ski trip with best friend ----------------------------------------

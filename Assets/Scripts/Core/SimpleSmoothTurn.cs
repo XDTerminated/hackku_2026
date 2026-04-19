@@ -13,7 +13,7 @@ namespace HackKU.Core
         public Transform target;
 
         [Tooltip("Degrees per second at full stick deflection.")]
-        public float turnSpeed = 90f;
+        public float turnSpeed = 180f;
 
         [Tooltip("Dead zone — stick values with |x| below this are ignored.")]
         public float deadZone = 0.2f;

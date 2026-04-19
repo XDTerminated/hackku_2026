@@ -43,7 +43,8 @@ namespace HackKU.EditorTools
         static readonly float WallFootSink = 0.8f;
 
         // Door cutout on the front (south) wall.
-        static readonly float DoorCenterX = -2.2f;   // clear of any big furniture inside
+        // Centered on the front wall (which spans MinX..MaxX = -4.7..1.3 → midpoint -1.7).
+        static readonly float DoorCenterX = -1.7f;
         static readonly float DoorWidth = 1.1f;
         static readonly float DoorHeight = 2.1f;
 

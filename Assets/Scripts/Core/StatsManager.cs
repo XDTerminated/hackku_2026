@@ -88,7 +88,14 @@ namespace HackKU.Core
         public void ApplyDelta(float moneyDelta, float happinessDelta, string reason)
         {
             money += moneyDelta;
-            happiness = Mathf.Clamp(happiness + happinessDelta, 0f, 100f);
+            // Furniture happiness bonus ONLY multiplies meaningful earned events
+            // (food orders, phone-call yeses — deltas >= 1). Passive regen drift and
+            // sub-unit ticks pass through unchanged so furniture doesn't create a
+            // constant drip that keeps happiness permanently pinned at 100.
+            float scaledHappiness = happinessDelta >= 1f
+                ? HappinessMultiplierStack.ApplyToGain(happinessDelta)
+                : happinessDelta;
+            happiness = Mathf.Clamp(happiness + scaledHappiness, 0f, 100f);
             lastReason = reason;
             RaiseStatsChanged();
             CheckGameOver();

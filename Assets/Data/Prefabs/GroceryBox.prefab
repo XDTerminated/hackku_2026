@@ -300,6 +300,7 @@ MonoBehaviour:
   interiorZ: {x: -1.6, y: 9.3}
   maxImpactY: 0.9
   itemSpread: 0.35
+  itemScaleMultiplier: 50
 --- !u!1 &5361596948481990493
 GameObject:
   m_ObjectHideFlags: 0

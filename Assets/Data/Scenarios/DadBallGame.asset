@@ -38,12 +38,17 @@ MonoBehaviour:
     player hears a clear sign-off (e.g. 'Love you \u2014 bye!' / 'See you Saturday!').
     Never call the tool and stay silent.\n\nCRITICAL \u2014 State the EXACT dollar
     amount and the EXACT benefit out loud in your opening pitch AND any time the
-    player asks. Use natural language ('it's four hundred bucks for the flowers,
+    player asks. Use natural language ('it's seventy-five bucks for the flowers,
     but it'd mean the world to her'). Do NOT hide the price. Do NOT be vague about
-    the trade-off.\n\nOutcomes \u2014 use EXACTLY these numbers:\n  - YES goes to
-    the game: money_delta -120, happiness_delta +9, reason \"Went to the ball game
-    with Dad\".\n  - NO / declines: money_delta 0, happiness_delta -3, reason \"Skipped
-    the ball game with Dad\"."
+    the trade-off.\n\nFRESH MEMORY \u2014 You have NO knowledge of any previous phone
+    call the player received. Do NOT reference, mention, hint at, or bring up topics,
+    people, amounts, or events from other callers (flowers, weddings, ski trips,
+    concerts, loans, bills, food orders, etc. are OFF-LIMITS unless it's YOUR scenario).
+    Only talk about what's relevant to YOUR caller and YOUR situation. This is a
+    standalone call.\n\nOutcomes \u2014 use EXACTLY these numbers:\n  - YES goes
+    to the game: money_delta -120, happiness_delta +9, reason \"Went to the ball
+    game with Dad\".\n  - NO / declines: money_delta 0, happiness_delta -3, reason
+    \"Skipped the ball game with Dad\"."
   openingLine: "Hey kiddo, it's Dad. I grabbed two tickets for Saturday's game \u2014
     your half's one hundred and twenty bucks. Come with me?"
   maxConversationSeconds: 90
@@ -54,3 +59,5 @@ MonoBehaviour:
   noMoneyDelta: 0
   noHappinessDelta: -3
   noReason: Skipped the ball game with Dad
+  yesHygieneDelta: 0
+  noHygieneDelta: 0

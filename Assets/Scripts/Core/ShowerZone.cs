@@ -41,6 +41,9 @@ namespace HackKU.Core
         void Update()
         {
             if (_occupants <= 0) return;
+            // Gated behind purchasing the shower ghost item. Until bought, the zone does
+            // nothing — the only way to gain hygiene is a dentist / doctor / therapist call.
+            if (!GhostRegistry.IsOwned("shower")) return;
             var hm = HygieneManager.Instance;
             if (hm == null) return;
             hm.ApplyDelta(fillPerSecond * Time.deltaTime, null);

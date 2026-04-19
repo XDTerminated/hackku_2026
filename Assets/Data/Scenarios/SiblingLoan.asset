@@ -38,12 +38,17 @@ MonoBehaviour:
     short in-character goodbye so the player hears a clear sign-off (e.g. 'Love you
     \u2014 bye!' / 'See you Saturday!'). Never call the tool and stay silent.\n\nCRITICAL
     \u2014 State the EXACT dollar amount and the EXACT benefit out loud in your opening
-    pitch AND any time the player asks. Use natural language ('it's four hundred
+    pitch AND any time the player asks. Use natural language ('it's seventy-five
     bucks for the flowers, but it'd mean the world to her'). Do NOT hide the price.
-    Do NOT be vague about the trade-off.\n\nOutcomes \u2014 use EXACTLY these numbers:\n 
-    - YES lends the $800: money_delta -800, happiness_delta +7, reason \"Covered
-    Emma's rent when she lost her job\".\n  - NO / declines: money_delta 0, happiness_delta
-    -8, reason \"Turned Emma down when she needed help\"."
+    Do NOT be vague about the trade-off.\n\nFRESH MEMORY \u2014 You have NO knowledge
+    of any previous phone call the player received. Do NOT reference, mention, hint
+    at, or bring up topics, people, amounts, or events from other callers (flowers,
+    weddings, ski trips, concerts, loans, bills, food orders, etc. are OFF-LIMITS
+    unless it's YOUR scenario). Only talk about what's relevant to YOUR caller and
+    YOUR situation. This is a standalone call.\n\nOutcomes \u2014 use EXACTLY these
+    numbers:\n  - YES lends the $800: money_delta -800, happiness_delta +7, reason
+    \"Covered Emma's rent when she lost her job\".\n  - NO / declines: money_delta
+    0, happiness_delta -8, reason \"Turned Emma down when she needed help\"."
   openingLine: Hey, it's Emma, your sister. I... I'm so sorry to ask, but I'm short
     eight hundred dollars for rent this month. Could you help me out?
   maxConversationSeconds: 90
@@ -54,3 +59,5 @@ MonoBehaviour:
   noMoneyDelta: 0
   noHappinessDelta: -8
   noReason: Turned Emma down when she needed help
+  yesHygieneDelta: 0
+  noHygieneDelta: 0

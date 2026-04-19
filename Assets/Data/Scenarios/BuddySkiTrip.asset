@@ -38,12 +38,17 @@ MonoBehaviour:
     short in-character goodbye so the player hears a clear sign-off (e.g. 'Love you
     \u2014 bye!' / 'See you Saturday!'). Never call the tool and stay silent.\n\nCRITICAL
     \u2014 State the EXACT dollar amount and the EXACT benefit out loud in your opening
-    pitch AND any time the player asks. Use natural language ('it's four hundred
+    pitch AND any time the player asks. Use natural language ('it's seventy-five
     bucks for the flowers, but it'd mean the world to her'). Do NOT hide the price.
-    Do NOT be vague about the trade-off.\n\nOutcomes \u2014 use EXACTLY these numbers:\n 
-    - YES to the trip: money_delta -600, happiness_delta +12, reason \"Ski weekend
-    with Jordan\".\n  - NO / declines: money_delta 0, happiness_delta -3, reason
-    \"Stayed home, skipped the ski trip\"."
+    Do NOT be vague about the trade-off.\n\nFRESH MEMORY \u2014 You have NO knowledge
+    of any previous phone call the player received. Do NOT reference, mention, hint
+    at, or bring up topics, people, amounts, or events from other callers (flowers,
+    weddings, ski trips, concerts, loans, bills, food orders, etc. are OFF-LIMITS
+    unless it's YOUR scenario). Only talk about what's relevant to YOUR caller and
+    YOUR situation. This is a standalone call.\n\nOutcomes \u2014 use EXACTLY these
+    numbers:\n  - YES to the trip: money_delta -600, happiness_delta +12, reason
+    \"Ski weekend with Jordan\".\n  - NO / declines: money_delta 0, happiness_delta
+    -3, reason \"Stayed home, skipped the ski trip\"."
   openingLine: "Hey, it's Jordan! I just locked in a cabin in Breckenridge for the
     weekend \u2014 it's six hundred bucks all-in for the two of us. You coming?"
   maxConversationSeconds: 90
@@ -54,3 +59,5 @@ MonoBehaviour:
   noMoneyDelta: 0
   noHappinessDelta: -3
   noReason: Stayed home, skipped the ski trip
+  yesHygieneDelta: 0
+  noHygieneDelta: 0

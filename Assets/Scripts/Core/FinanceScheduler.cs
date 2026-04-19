@@ -13,8 +13,8 @@ namespace HackKU.Core
         [SerializeField] Bill[] bills = new Bill[0];
         [Tooltip("Paychecks per year. 2 = every 6 months (slower, encourages saving).")]
         [SerializeField] int paychecksPerYear = 2;
-        [Tooltip("Multiplier on the paycheck amount. 0.6 makes income feel tighter.")]
-        [SerializeField] float paycheckMultiplier = 0.6f;
+        [Tooltip("Multiplier on the paycheck amount. 0.2 keeps income scarce so debt payoff matters.")]
+        [SerializeField] float paycheckMultiplier = 0.2f;
 
         [Header("Student-loan debt")]
         [Tooltip("Monthly compounding interest rate on outstanding debt (0.005 = 0.5% per in-game month).")]

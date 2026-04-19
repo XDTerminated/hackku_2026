@@ -36,7 +36,7 @@ namespace HackKU.AI
         public bool IsCallActive { get; private set; }
 
         [Tooltip("Maximum real-time seconds a single call can stay active before being forcibly aborted. Safety net against stuck coroutines or non-terminating LLM flows.")]
-        [SerializeField] private float maxCallDurationSeconds = 180f;
+        [SerializeField] private float maxCallDurationSeconds = 1800f;
         private float _callStartTime;
 
         private void Update()
@@ -190,17 +190,9 @@ namespace HackKU.AI
 
             while (!ct.IsCancellationRequested && IsCallActive)
             {
-                // Safety caps.
-                if (turn >= Mathf.Max(1, scenario.maxTurns))
-                {
-                    if (verboseLogging) Debug.Log("[CallController] maxTurns reached, ending call.");
-                    break;
-                }
-                if (Time.unscaledTime - callStartTime >= scenario.maxConversationSeconds)
-                {
-                    if (verboseLogging) Debug.Log("[CallController] maxConversationSeconds reached, ending call.");
-                    break;
-                }
+                // Turn and duration caps are removed — the player can talk as long as they
+                // want. The call ends only when they hang up, apply_outcome fires, or
+                // maxCallDurationSeconds (absolute safety net) elapses.
 
                 // 2) Listen phase — start mic, wait for OnPlayerFinishedSpeaking().
                 _userTurnReady = false;
@@ -208,8 +200,6 @@ namespace HackKU.AI
 
                 while (!ct.IsCancellationRequested && IsCallActive && !_userTurnReady)
                 {
-                    // Also honor wall-clock cap inside the wait.
-                    if (Time.unscaledTime - callStartTime >= scenario.maxConversationSeconds) break;
                     yield return null;
                 }
 

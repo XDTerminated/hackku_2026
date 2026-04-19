@@ -15,6 +15,10 @@ namespace HackKU.Core
         [SerializeField] float invested;
         public float Invested => invested;
 
+        // Investing is gated by owning the Investment Board ghost item. Without it
+        // the broker call politely refuses deposits; already-invested balances still tick.
+        public static bool CanInvest => GhostRegistry.IsOwned("investment_board");
+
         [Header("Fluctuation (real-time)")]
         [Tooltip("Seconds between price ticks.")]
         [SerializeField] float tickSeconds = 2f;
@@ -62,6 +66,7 @@ namespace HackKU.Core
         public float Deposit(float amount)
         {
             if (amount <= 0f) return 0f;
+            if (!CanInvest) return 0f; // player hasn't bought the Investment Board yet
             var sm = StatsManager.Instance;
             if (sm == null) return 0f;
             float applied = Mathf.Min(amount, sm.Money);

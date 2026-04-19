@@ -1,0 +1,106 @@
+using TMPro;
+using UnityEngine;
+
+namespace HackKU.Core
+{
+    // Bouncing yellow arrow that hovers above a target ghost to guide the player to it.
+    // Automatically hides once the linked GhostFurnitureItem is purchased.
+    [ExecuteAlways]
+    public class ObjectiveMarker : MonoBehaviour
+    {
+        public GhostFurnitureItem target;
+        public string label = "BUY";
+        public Color arrowColor = new Color(1f, 0.85f, 0.25f);
+        public float heightAboveTarget = 0.45f;
+        public float bobAmplitude = 0.1f;
+        public float bobSpeed = 3f;
+
+        GameObject _canvasGo;
+        TMP_Text _arrowText;
+        TMP_Text _labelText;
+        CanvasGroup _cg;
+        float _baseY;
+
+        void Awake() { Build(); }
+
+        void Build()
+        {
+            if (_canvasGo != null) return;
+            _canvasGo = new GameObject("[ArrowCanvas]");
+            _canvasGo.transform.SetParent(transform, false);
+            var canvas = _canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.sortingOrder = 10;
+            var rt = (RectTransform)_canvasGo.transform;
+            rt.sizeDelta = new Vector2(280, 200);
+            _canvasGo.transform.localScale = Vector3.one * 0.003f;
+            _cg = _canvasGo.AddComponent<CanvasGroup>();
+
+            var arrowGO = new GameObject("Arrow", typeof(RectTransform));
+            arrowGO.transform.SetParent(_canvasGo.transform, false);
+            _arrowText = arrowGO.AddComponent<TextMeshProUGUI>();
+            _arrowText.text = "▼";
+            _arrowText.fontSize = 140;
+            _arrowText.fontStyle = FontStyles.Bold;
+            _arrowText.alignment = TextAlignmentOptions.Center;
+            _arrowText.color = arrowColor;
+            _arrowText.textWrappingMode = TextWrappingModes.NoWrap;
+            var art = (RectTransform)arrowGO.transform;
+            art.anchorMin = new Vector2(0, 0.35f); art.anchorMax = new Vector2(1, 1);
+            art.offsetMin = Vector2.zero; art.offsetMax = Vector2.zero;
+
+            var labelGO = new GameObject("Label", typeof(RectTransform));
+            labelGO.transform.SetParent(_canvasGo.transform, false);
+            _labelText = labelGO.AddComponent<TextMeshProUGUI>();
+            _labelText.text = label;
+            _labelText.fontSize = 44;
+            _labelText.fontStyle = FontStyles.Bold;
+            _labelText.alignment = TextAlignmentOptions.Center;
+            _labelText.color = arrowColor;
+            _labelText.textWrappingMode = TextWrappingModes.NoWrap;
+            var lrt = (RectTransform)labelGO.transform;
+            lrt.anchorMin = new Vector2(0, 0); lrt.anchorMax = new Vector2(1, 0.35f);
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+        }
+
+        void LateUpdate()
+        {
+            if (_canvasGo == null) Build();
+
+            // Position above the target.
+            Vector3 anchor = target != null ? target.transform.position : transform.position;
+            // Use world bounds max if available so the marker sits above the object.
+            if (target != null)
+            {
+                Bounds b = new Bounds(anchor, Vector3.zero);
+                bool first = true;
+                foreach (var r in target.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r == null) continue;
+                    if (first) { b = r.bounds; first = false; }
+                    else b.Encapsulate(r.bounds);
+                }
+                anchor = new Vector3(b.center.x, b.max.y, b.center.z);
+            }
+
+            float bob = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
+            _canvasGo.transform.position = anchor + new Vector3(0f, heightAboveTarget + bob, 0f);
+
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                Vector3 toCam = cam.transform.position - _canvasGo.transform.position;
+                toCam.y = 0f;
+                if (toCam.sqrMagnitude > 0.0001f)
+                    _canvasGo.transform.rotation = Quaternion.LookRotation(-toCam.normalized, Vector3.up);
+            }
+
+            // Hide when the target is bought.
+            bool showing = target != null && !target.IsOwned;
+            if (_cg != null) _cg.alpha = showing ? 1f : 0f;
+
+            if (_arrowText != null) _arrowText.color = arrowColor;
+            if (_labelText != null) { _labelText.color = arrowColor; _labelText.text = label; }
+        }
+    }
+}

@@ -92,13 +92,16 @@ namespace HackKU.Core
 
         // Real Unicode emoji — rendered via the OS emoji-font fallback installed at runtime
         // by EmojiFontBootstrap. If that fallback failed to install, these show as tofu.
+        // Using only widely-supported Unicode 6.0/6.1 emoji (in every modern emoji font).
+        // The 🙂 and 😟 glyphs from the earlier pass were newer Unicode additions that
+        // didn't always render, so they got swapped out here.
         static string HappinessEmoji(float h)
         {
-            if (h >= 75f) return "\U0001F604"; // 😄
-            if (h >= 55f) return "\U0001F642"; // 🙂
-            if (h >= 35f) return "\U0001F610"; // 😐
-            if (h >= 20f) return "\U0001F61F"; // 😟
-            return "\U0001F622";               // 😢
+            if (h >= 75f) return "\U0001F604"; // 😄 grinning face (6.0)
+            if (h >= 55f) return "\U0001F60A"; // 😊 smiling face (6.0)
+            if (h >= 35f) return "\U0001F610"; // 😐 neutral face (6.1)
+            if (h >= 20f) return "\U0001F61E"; // 😞 disappointed (6.0)
+            return "\U0001F62D";               // 😭 loudly crying (6.0)
         }
 
         static string FormatMoney(float m)
